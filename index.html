@@ -17,7 +17,7 @@
 <div id="game-app" class="w-full max-w-2xl bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-200 flex flex-col min-h-[760px] relative">
     <header class="bg-gradient-to-r from-orange-600 to-red-600 text-white px-5 py-4 flex justify-between items-center shadow-md">
         <div>
-            <h1 class="font-bold text-base sm:text-lg tracking-wider">🔥 虎扑风格 NBA 巨星模拟器 V2.0</h1>
+            <h1 class="font-bold text-base sm:text-lg tracking-wider">🔥 NBA 巨星模拟器 V2.0</h1>
             <p id="sub-header-info" class="text-xs text-orange-100 mt-0.5">年份: 2026-27 赛季 | 年龄: 22岁 | 生涯第 1 年</p>
         </div>
         <div class="flex items-center gap-2">
@@ -199,7 +199,7 @@ function ensureLeagueInitialized(){
 function render(){
     ensureLeagueInitialized();
     const container=document.getElementById('main-content'), badge=document.getElementById('header-badge'), sub=document.getElementById('sub-header-info');
-    sub.innerText=`年份: ${STATE.seasonYear}-${String(STATE.seasonYear+1).slice(2)} 赛季 | 年龄: ${STATE.age}岁 | 合约还剩: ${STATE.contractYearsLeft}年 | 虎扑声望: ${STATE.fanReputation}`;
+    sub.innerText=`年份: ${STATE.seasonYear}-${String(STATE.seasonYear+1).slice(2)} 赛季 | 年龄: ${STATE.age}岁 | 合约还剩: ${STATE.contractYearsLeft}年 | 声望: ${STATE.fanReputation}`;
     const map={
         position_select:['球员定制',renderPositionScreen],build:[`新秀属性抽签 (${STATE.currentAttrIndex+1}/7)`,renderBuildScreen],reveal:['球员揭幕',renderRevealScreen],season:['常规赛',renderSeasonScreen],
         trade_news:['交易新闻中心',renderTradeNewsScreen],awards:['赛季数据与荣誉',renderAwardsScreen],standings:['东西部战绩',renderStandingsScreen],playin:['附加赛战报',renderPlayInScreen],playoffs:['季后赛战报',renderPlayoffsScreen],draft:['历史选秀大会',renderDraftScreen],free_agency:['自由市场与招募',renderFreeAgencyScreen],attribute_allocation:['属性自由加点',renderAllocationScreen],offseason_growth:['休赛期',renderGrowthScreen],retired:['生涯退役结算',renderRetiredScreen]
