@@ -1,0 +1,1465 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>《我创造的完美球员》NBA生涯模式 V5.16 · 赛季随机事件版</title>
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<style>
+body{background:#f1f5f9;color:#1e293b;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif}
+button{user-select:none}
+.news-card{animation:fadeIn .25s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+::-webkit-scrollbar{width:7px}::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:999px}
+.stat-box{background:white;border:1px solid #e2e8f0;border-radius:12px;padding:9px;text-align:center}
+.glow{box-shadow:0 0 0 2px rgba(249,115,22,.12),0 10px 25px rgba(15,23,42,.08)}
+</style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-2 sm:p-4">
+<div id="game-app" class="w-full max-w-3xl bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-200 flex flex-col min-h-[800px]">
+<header class="bg-gradient-to-r from-orange-600 to-red-600 text-white px-5 py-4 flex justify-between items-center">
+  <div>
+    <h1 class="font-black text-base sm:text-lg tracking-wide">🔥 我创造的完美球员 · NBA生涯模式 V5.16</h1>
+    <p id="sub-header-info" class="text-xs text-orange-100 mt-1"></p>
+  </div>
+  <div class="flex items-center gap-2">
+      <button onclick="resetGame(); return false;" class="text-xs bg-white/20 hover:bg-white/30 px-2.5 py-1 rounded-full font-semibold">🔄 新档</button>
+    <span id="header-badge" class="text-xs bg-black/20 px-3 py-1 rounded-full font-semibold border border-white/20">创建球员</span>
+  </div>
+</header>
+<main id="main-content" class="p-5 flex-1 overflow-y-auto max-h-[82vh]"></main>
+</div>
+
+<script>
+/* ============================================================
+   真实NBA 2026-27赛季阵容数据 (基于Basketball-Reference.com)
+   ============================================================ */
+const REAL_ROSTERS = {
+'波士顿凯尔特人': [
+  {name:'杰森·塔图姆',pos:'SF',ovr:93,age:28},{name:'杰伦·布朗',pos:'SG',ovr:91,age:30},
+  {name:'德里克·怀特',pos:'PG',ovr:85,age:33},{name:'朱·霍勒迪',pos:'PG',ovr:83,age:36},
+  {name:'艾尔·霍福德',pos:'C',ovr:80,age:40},{name:'佩顿·普里查德',pos:'PG',ovr:79,age:28},
+  {name:'萨姆·豪瑟',pos:'SF',ovr:77,age:29},{name:'卢克·科内特',pos:'C',ovr:74,age:31},
+  {name:'乔丹·沃尔什',pos:'SF',ovr:72,age:23},{name:'内米亚斯·克塔',pos:'C',ovr:71,age:26}
+],
+'纽约尼克斯': [
+  {name:'杰伦·布伦森',pos:'PG',ovr:89,age:30},{name:'米卡尔·布里奇斯',pos:'SG',ovr:87,age:30},
+  {name:'OG·阿奴诺比',pos:'SF',ovr:86,age:29},{name:'朱利叶斯·兰德尔',pos:'PF',ovr:85,age:32},
+  {name:'米切尔·罗宾逊',pos:'C',ovr:82,age:28},{name:'唐特·迪温琴佐',pos:'SG',ovr:80,age:29},
+  {name:'约什·哈特',pos:'SF',ovr:79,age:31},{name:'以赛亚·哈尔滕施泰因',pos:'C',ovr:77,age:28},
+  {name:'昆廷·格兰姆斯',pos:'SG',ovr:76,age:26},{name:'迈尔斯·麦克布莱德',pos:'PG',ovr:74,age:25}
+],
+'费城76人': [
+  {name:'乔尔·恩比德',pos:'C',ovr:93,age:32},{name:'泰雷塞·马克西',pos:'PG',ovr:88,age:26},
+  {name:'保罗·乔治',pos:'SF',ovr:86,age:36},{name:'凯利·乌布雷',pos:'SF',ovr:81,age:31},
+  {name:'凯尔·洛瑞',pos:'PG',ovr:79,age:40},{name:'尼古拉斯·巴图姆',pos:'PF',ovr:78,age:38},
+  {name:'安德烈·德拉蒙德',pos:'C',ovr:77,age:33},{name:'德安东尼·梅尔顿',pos:'SG',ovr:76,age:28},
+  {name:'肯扬·马丁',pos:'PF',ovr:75,age:25},{name:'里基·康西尔',pos:'SG',ovr:72,age:24}
+],
+'密尔沃基雄鹿': [
+  {name:'扬尼斯·阿德托昆博',pos:'PF',ovr:94,age:32},{name:'达米安·利拉德',pos:'PG',ovr:90,age:36},
+  {name:'克里斯·米德尔顿',pos:'SF',ovr:85,age:35},{name:'布鲁克·洛佩斯',pos:'C',ovr:83,age:38},
+  {name:'博比·波蒂斯',pos:'PF',ovr:81,age:31},{name:'马利克·比斯利',pos:'SG',ovr:79,age:30},
+  {name:'帕特·康诺顿',pos:'SG',ovr:76,role:'替补'},{name:'杰·克劳德',pos:'PF',ovr:75,age:36},
+  {name:'AJ·格林',pos:'SG',ovr:74,age:26},{name:'安德烈·杰克逊',pos:'SF',ovr:72,age:25}
+],
+'克利夫兰骑士': [
+  {name:'多诺万·米切尔',pos:'SG',ovr:91,age:30},{name:'达里厄斯·加兰',pos:'PG',ovr:87,age:26},
+  {name:'埃文·莫布里',pos:'PF',ovr:86,age:25},{name:'贾勒特·阿伦',pos:'C',ovr:85,age:28},
+  {name:'卡里斯·勒韦尔',pos:'SG',ovr:80,age:32},{name:'马克思·斯特鲁斯',pos:'SF',ovr:79,age:28},
+  {name:'乔治·尼昂',pos:'PF',ovr:76,age:33},{name:'迪恩·韦德',pos:'SF',ovr:74,age:30},
+  {name:'萨姆·梅里尔',pos:'SG',ovr:73,age:28},{name:'埃莫尼·贝茨',pos:'SF',ovr:71,age:23}
+],
+'迈阿密热火': [
+  {name:'吉米·巴特勒',pos:'SF',ovr:90,age:37},{name:'巴姆·阿德巴约',pos:'C',ovr:88,age:29},
+  {name:'泰勒·希罗',pos:'SG',ovr:86,age:26},{name:'特里·罗齐尔',pos:'PG',ovr:84,age:32},
+  {name:'凯莱布·马丁',pos:'SF',ovr:81,role:'关键替补'},{name:'邓肯·罗宾逊',pos:'SG',ovr:79,age:32},
+  {name:'凯文·乐福',pos:'PF',ovr:77,age:38},{name:'海伍德·海史密斯',pos:'PF',ovr:75,age:30},
+  {name:'小海梅·哈克斯',pos:'SF',ovr:74,age:25},{name:'尼古拉·约维奇',pos:'PF',ovr:73,age:23}
+],
+'奥兰多魔术': [
+  {name:'保罗·班凯罗',pos:'PF',ovr:89,age:24},{name:'弗朗茨·瓦格纳',pos:'SF',ovr:87,age:25},
+  {name:'杰伦·萨格斯',pos:'PG',ovr:84,age:25},{name:'温德尔·卡特',pos:'C',ovr:83,age:27},
+  {name:'科尔·安东尼',pos:'PG',ovr:80,age:26},{name:'莫里茨·瓦格纳',pos:'C',ovr:79,age:29},
+  {name:'加里·哈里斯',pos:'SG',ovr:77,age:32},{name:'乔纳森·艾萨克',pos:'PF',ovr:76,age:29},
+  {name:'凯莱布·休斯坦',pos:'SG',ovr:74,age:25},{name:'安东尼·布莱克',pos:'PG',ovr:73,age:22}
+],
+'印第安纳步行者': [
+  {name:'泰雷塞·哈利伯顿',pos:'PG',ovr:90,age:26},{name:'帕斯卡尔·西亚卡姆',pos:'PF',ovr:88,age:32},
+  {name:'迈尔斯·特纳',pos:'C',ovr:86,age:30},{name:'本内迪克特·马瑟林',pos:'SG',ovr:83,age:24},
+  {name:'布鲁斯·布朗',pos:'SG',ovr:80,age:30},{name:'奥比·托平',pos:'PF',ovr:79,age:28},
+  {name:'TJ·麦康奈尔',pos:'PG',ovr:78,age:34},{name:'安德鲁·内姆布哈德',pos:'PG',ovr:77,age:25},
+  {name:'贾拉斯·沃克',pos:'SF',ovr:75,age:23},{name:'本·谢泼德',pos:'SG',ovr:73,age:25}
+],
+'芝加哥公牛': [
+  {name:'扎克·拉文',pos:'SG',ovr:88,age:31},{name:'德玛尔·德罗赞',pos:'SF',ovr:87,age:37},
+  {name:'尼古拉·武切维奇',pos:'C',ovr:84,age:36},{name:'科比·怀特',pos:'PG',ovr:82,age:26},
+  {name:'亚历克斯·卡鲁索',pos:'SG',ovr:80,age:32},{name:'帕特里克·威廉姆斯',pos:'PF',ovr:78,age:25},
+  {name:'阿约·多森姆',pos:'PG',ovr:77,age:26},{name:'贾文特·格林',pos:'SF',ovr:75,age:31},
+  {name:'安德烈·德拉蒙德',pos:'C',ovr:74,age:33},{name:'达伦·特里',pos:'SF',ovr:72,age:24}
+],
+'亚特兰大老鹰': [
+  {name:'特雷·杨',pos:'PG',ovr:91,age:28},{name:'德章泰·穆雷',pos:'SG',ovr:88,age:30},
+  {name:'杰伦·约翰逊',pos:'PF',ovr:85,age:25},{name:'克林特·卡佩拉',pos:'C',ovr:83,age:32},
+  {name:'博格丹·博格达诺维奇',pos:'SG',ovr:82,age:34},{name:'德安德烈·亨特',pos:'SF',ovr:81,age:29},
+  {name:'奥涅卡·奥孔古',pos:'C',ovr:79,age:26},{name:'萨迪克·贝',pos:'SF',ovr:78,age:27},
+  {name:'A.J.·格里芬',pos:'SF',ovr:76,age:23},{name:'科比·巴夫金',pos:'PG',ovr:74,age:23}
+],
+'多伦多猛龙': [
+  {name:'斯科蒂·巴恩斯',pos:'SF',ovr:87,age:25},{name:'伊曼纽尔·奎克利',pos:'PG',ovr:84,age:27},
+  {name:'雅各布·珀尔特尔',pos:'C',ovr:83,age:31},{name:'RJ·巴雷特',pos:'SG',ovr:84,age:26},
+  {name:'格雷迪·迪克',pos:'SG',ovr:79,age:23},{name:'克里斯·布歇',pos:'PF',ovr:77,age:33},
+  {name:'奥查伊·阿巴吉',pos:'SF',ovr:76,age:26},{name:'贾伦·麦克丹尼尔斯',pos:'PF',ovr:75,age:28}
+],
+'布鲁克林篮网': [
+  {name:'米卡尔·布里奇斯',pos:'SF',ovr:87,age:30},{name:'卡梅隆·约翰逊',pos:'PF',ovr:84,age:30},
+  {name:'尼古拉斯·克拉克斯顿',pos:'C',ovr:83,age:27},{name:'斯宾塞·丁威迪',pos:'PG',ovr:82,age:33},
+  {name:'卡梅隆·托马斯',pos:'SG',ovr:81,age:25},{name:'多里安·芬尼-史密斯',pos:'PF',ovr:80,age:33},
+  {name:'丹尼斯·施罗德',pos:'PG',ovr:79,age:33},{name:'罗伊斯·奥尼尔',pos:'SF',ovr:78,age:33},
+  {name:'戴罗恩·夏普',pos:'C',ovr:76,age:25},{name:'诺亚·克洛尼',pos:'PF',ovr:74,age:22}
+],
+'夏洛特黄蜂': [
+  {name:'拉梅洛·鲍尔',pos:'PG',ovr:89,age:25},{name:'布兰登·米勒',pos:'SF',ovr:86,age:24},
+  {name:'迈尔斯·布里奇斯',pos:'PF',ovr:84,age:28},{name:'马克·威廉姆斯',pos:'C',ovr:82,age:25},
+  {name:'特里·罗齐尔',pos:'SG',ovr:81,age:32},{name:'PJ·华盛顿',pos:'PF',ovr:80,age:28},
+  {name:'尼克·理查兹',pos:'C',ovr:78,age:29},{name:'科迪·马丁',pos:'SG',ovr:77,age:29},
+  {name:'小尼克·史密斯',pos:'PG',ovr:75,age:22},{name:'JT·索尔',pos:'PF',ovr:73,age:24}
+],
+'华盛顿奇才': [
+  {name:'凯尔·库兹马',pos:'PF',ovr:85,age:31},{name:'乔丹·普尔',pos:'SG',ovr:83,age:27},
+  {name:'丹尼尔·加福德',pos:'C',ovr:82,age:28},{name:'泰厄斯·琼斯',pos:'PG',ovr:81,age:30},
+  {name:'德尼·阿夫迪亚',pos:'SF',ovr:80,age:25},{name:'科里·基斯珀特',pos:'SF',ovr:79,age:27},
+  {name:'比拉尔·库利巴利',pos:'SG',ovr:77,age:22},{name:'帕特里克·鲍德温',pos:'PF',ovr:74,age:24},
+  {name:'约翰尼·戴维斯',pos:'SG',ovr:73,age:24},{name:'安东尼·吉尔',pos:'PF',ovr:72,age:32}
+],
+'底特律活塞': [
+  {name:'凯德·坎宁安',pos:'PG',ovr:88,age:25},{name:'杰伦·杜伦',pos:'C',ovr:85,age:23},
+  {name:'贾登·艾维',pos:'SG',ovr:83,age:24},{name:'奥萨尔·汤普森',pos:'SF',ovr:82,age:23},
+  {name:'以赛亚·斯图尔特',pos:'PF',ovr:80,age:25},{name:'马库斯·萨瑟',pos:'PG',ovr:78,age:26},
+  {name:'西蒙尼·冯泰奇奥',pos:'SF',ovr:77,age:29},{name:'詹姆斯·怀斯曼',pos:'C',ovr:76,age:25},
+  {name:'奥比·托平',pos:'PF',ovr:75,age:28},{name:'昆汀·格兰姆斯',pos:'SG',ovr:74,age:26}
+],
+'俄克拉荷马雷霆': [
+  {name:'谢伊·吉尔杰斯-亚历山大',pos:'PG',ovr:94,age:28},{name:'杰伦·威廉姆斯',pos:'SG',ovr:88,age:25},
+  {name:'切特·霍姆格伦',pos:'C',ovr:87,age:24},{name:'约什·吉迪',pos:'PG',ovr:84,age:24},
+  {name:'吕冈茨·多尔特',pos:'SF',ovr:82,age:27},{name:'以赛亚·乔',pos:'SG',ovr:80,age:26},
+  {name:'肯里奇·威廉姆斯',pos:'PF',ovr:78,age:32},{name:'卡森·华莱士',pos:'PG',ovr:77,age:23},
+  {name:'杰林·威廉姆斯',pos:'C',ovr:75,age:24},{name:'乌斯曼·迪昂',pos:'SF',ovr:74,age:23}
+],
+'丹佛掘金': [
+  {name:'尼古拉·约基奇',pos:'C',ovr:95,age:31},{name:'贾马尔·穆雷',pos:'PG',ovr:89,age:29},
+  {name:'阿隆·戈登',pos:'PF',ovr:86,age:31},{name:'迈克尔·波特',pos:'SF',ovr:85,age:28},
+  {name:'肯塔维奥斯·考德威尔-波普',pos:'SG',ovr:82,age:33},{name:'雷吉·杰克逊',pos:'PG',ovr:80,age:34},
+  {name:'佩顿·沃特森',pos:'SF',ovr:78,age:24},{name:'克里斯蒂安·布劳恩',pos:'SG',ovr:77,age:25},
+  {name:'齐克·纳吉',pos:'C',ovr:75,age:25},{name:'朱利安·斯特劳瑟',pos:'SF',ovr:74,age:23}
+],
+'明尼苏达森林狼': [
+  {name:'安东尼·爱德华兹',pos:'SG',ovr:92,age:25},{name:'卡尔-安东尼·唐斯',pos:'C',ovr:90,age:31},
+  {name:'鲁迪·戈贝尔',pos:'C',ovr:88,age:34},{name:'迈克·康利',pos:'PG',ovr:85,age:39},
+  {name:'杰登·麦克丹尼尔斯',pos:'SF',ovr:84,age:26},{name:'纳兹·里德',pos:'C',ovr:82,age:26},
+  {name:'尼克·亚历山大-沃克',pos:'SG',ovr:80,age:28},{name:'凯尔·安德森',pos:'PF',ovr:79,age:33},
+  {name:'蒙特·莫里斯',pos:'PG',ovr:78,age:29},{name:'卢卡·加尔扎',pos:'C',ovr:75,age:26}
+],
+'达拉斯独行侠': [
+  {name:'卢卡·东契奇',pos:'PG',ovr:95,age:27},{name:'凯里·欧文',pos:'SG',ovr:91,age:34},
+  {name:'德里克·莱夫利',pos:'C',ovr:85,age:22},{name:'PJ·华盛顿',pos:'PF',ovr:84,age:28},
+  {name:'小德里克·琼斯',pos:'SF',ovr:82,age:29},{name:'马克西·克莱伯',pos:'PF',ovr:80,age:34},
+  {name:'约什·格林',pos:'SG',ovr:79,age:26},{name:'丹特·埃克萨姆',pos:'PG',ovr:78,age:31},
+  {name:'德怀特·鲍威尔',pos:'C',ovr:76,age:35},{name:'杰登·哈迪',pos:'SG',ovr:75,age:24}
+],
+'菲尼克斯太阳': [
+  {name:'凯文·杜兰特',pos:'PF',ovr:94,age:38},{name:'德文·布克',pos:'SG',ovr:91,age:30},
+  {name:'布拉德利·比尔',pos:'SG',ovr:87,age:33},{name:'德安德烈·艾顿',pos:'C',ovr:86,age:28},
+  {name:'约什·奥科吉',pos:'SF',ovr:82,age:28},{name:'格雷森·阿伦',pos:'SG',ovr:81,age:31},
+  {name:'埃里克·戈登',pos:'SG',ovr:80,age:38},{name:'尤素夫·努尔基奇',pos:'C',ovr:79,age:32},
+  {name:'罗伊斯·奥尼尔',pos:'SF',ovr:78,age:33},{name:'纳西尔·利特尔',pos:'SF',ovr:76,age:26}
+],
+'洛杉矶湖人': [
+  {name:'勒布朗·詹姆斯',pos:'SF',ovr:93,age:42},{name:'安东尼·戴维斯',pos:'C',ovr:92,age:33},
+  {name:'奥斯汀·里夫斯',pos:'SG',ovr:86,age:28},{name:'德安吉洛·拉塞尔',pos:'PG',ovr:84,age:30},
+  {name:'八村塁',pos:'PF',ovr:83,age:28},{name:'贾里德·范德比尔特',pos:'PF',ovr:81,age:27},
+  {name:'盖布·文森特',pos:'PG',ovr:80,age:30},{name:'马克斯·克里斯蒂',pos:'SG',ovr:79,age:23},
+  {name:'贾克森·海斯',pos:'C',ovr:77,age:26},{name:'卡姆·雷迪什',pos:'SF',ovr:76,age:27}
+],
+'金州勇士': [
+  {name:'斯蒂芬·库里',pos:'PG',ovr:94,age:38},{name:'克莱·汤普森',pos:'SG',ovr:89,age:36},
+  {name:'德雷蒙德·格林',pos:'PF',ovr:87,age:36},{name:'乔纳森·库明加',pos:'SF',ovr:86,age:24},
+  {name:'安德鲁·维金斯',pos:'SF',ovr:85,age:31},{name:'克里斯·保罗',pos:'PG',ovr:84,age:39},
+  {name:'摩西·穆迪',pos:'SG',ovr:82,age:24},{name:'凯文·卢尼',pos:'C',ovr:80,age:30},
+  {name:'加里·佩顿二世',pos:'PG',ovr:79,age:34},{name:'特雷斯·杰克逊-戴维斯',pos:'C',ovr:78,age:26}
+],
+'圣安东尼奥马刺': [
+  {name:'维克托·文班亚马',pos:'C',ovr:92,age:22},{name:'德文·瓦塞尔',pos:'SG',ovr:85,age:26},
+  {name:'杰里米·索汉',pos:'PF',ovr:83,age:23},{name:'凯尔登·约翰逊',pos:'SF',ovr:82,age:27},
+  {name:'特雷·琼斯',pos:'PG',ovr:81,age:26},{name:'扎克·科林斯',pos:'C',ovr:80,age:29},
+  {name:'马拉基·布拉纳姆',pos:'SG',ovr:79,age:23},{name:'布莱克·韦斯利',pos:'PG',ovr:77,age:23},
+  {name:'朱利安·尚帕尼',pos:'SF',ovr:76,age:25},{name:'多米尼克·巴洛',pos:'PF',ovr:74,age:24}
+],
+'休斯顿火箭': [
+  {name:'阿尔佩伦·申京',pos:'C',ovr:87,age:24},{name:'杰伦·格林',pos:'SG',ovr:86,age:24},
+  {name:'小贾巴里·史密斯',pos:'PF',ovr:84,age:23},{name:'弗雷德·范弗利特',pos:'PG',ovr:83,age:32},
+  {name:'狄龙·布鲁克斯',pos:'SF',ovr:82,age:30},{name:'卡姆·惠特摩尔',pos:'SF',ovr:81,age:22},
+  {name:'塔里·伊森',pos:'PF',ovr:80,age:25},{name:'杰夫·格林',pos:'PF',ovr:78,age:38},
+  {name:'阿门·汤普森',pos:'PG',ovr:77,age:23},{name:'乔克·兰代尔',pos:'C',ovr:76,age:29}
+],
+'洛杉矶快船': [
+  {name:'科怀·伦纳德',pos:'SF',ovr:93,age:35},{name:'保罗·乔治',pos:'SF',ovr:90,age:36},
+  {name:'詹姆斯·哈登',pos:'PG',ovr:89,age:37},{name:'拉塞尔·威斯布鲁克',pos:'PG',ovr:86,age:38},
+  {name:'伊维察·祖巴茨',pos:'C',ovr:84,age:29},{name:'诺曼·鲍威尔',pos:'SG',ovr:83,age:33},
+  {name:'特伦斯·曼恩',pos:'SG',ovr:82,age:30},{name:'PJ·塔克',pos:'PF',ovr:80,age:39},
+  {name:'阿米尔·科菲',pos:'SF',ovr:78,age:27},{name:'梅森·普拉姆利',pos:'C',ovr:77,age:34}
+],
+'萨克拉门托国王': [
+  {name:'达龙·福克斯',pos:'PG',ovr:90,age:29},{name:'多曼塔斯·萨博尼斯',pos:'C',ovr:89,age:30},
+  {name:'基根·穆雷',pos:'PF',ovr:86,age:26},{name:'马利克·蒙克',pos:'SG',ovr:84,age:28},
+  {name:'凯文·赫尔特',pos:'SG',ovr:82,age:28},{name:'哈里森·巴恩斯',pos:'SF',ovr:81,age:34},
+  {name:'特雷·莱尔斯',pos:'PF',ovr:80,age:31},{name:'戴维恩·米切尔',pos:'PG',ovr:79,age:28},
+  {name:'萨沙·韦津科夫',pos:'SF',ovr:78,age:29},{name:'克里斯·杜阿尔特',pos:'SG',ovr:76,age:27}
+],
+'孟菲斯灰熊': [
+  {name:'贾·莫兰特',pos:'PG',ovr:92,age:27},{name:'小贾伦·杰克逊',pos:'C',ovr:89,age:27},
+  {name:'德斯蒙德·贝恩',pos:'SG',ovr:88,age:28},{name:'马库斯·斯马特',pos:'PG',ovr:85,age:32},
+  {name:'布兰登·克拉克',pos:'PF',ovr:83,age:30},{name:'桑蒂·阿尔达马',pos:'PF',ovr:81,age:25},
+  {name:'卢克·肯纳德',pos:'SG',ovr:80,age:30},{name:'泽维尔·蒂尔曼',pos:'C',ovr:79,age:27},
+  {name:'大卫·罗迪',pos:'SF',ovr:77,age:25},{name:'约翰·康查尔',pos:'SG',ovr:76,age:30}
+],
+'新奥尔良鹈鹕': [
+  {name:'锡安·威廉森',pos:'PF',ovr:91,age:26},{name:'布兰登·英格拉姆',pos:'SF',ovr:88,age:29},
+  {name:'CJ·麦科勒姆',pos:'SG',ovr:87,age:35},{name:'赫伯特·琼斯',pos:'SF',ovr:84,age:28},
+  {name:'乔纳斯·瓦兰丘纳斯',pos:'C',ovr:83,age:34},{name:'特雷·墨菲',pos:'SG',ovr:82,age:26},
+  {name:'戴森·丹尼尔斯',pos:'PG',ovr:80,age:23},{name:'纳吉·马歇尔',pos:'SF',ovr:79,age:28},
+  {name:'小拉里·南斯',pos:'C',ovr:78,age:33},{name:'何塞·阿尔瓦拉多',pos:'PG',ovr:77,age:28}
+],
+'犹他爵士': [
+  {name:'劳里·马尔卡宁',pos:'PF',ovr:89,age:29},{name:'乔丹·克拉克森',pos:'SG',ovr:85,age:34},
+  {name:'沃克·凯斯勒',pos:'C',ovr:84,age:25},{name:'科林·塞克斯顿',pos:'PG',ovr:83,age:27},
+  {name:'奥查伊·阿巴吉',pos:'SF',ovr:81,age:26},{name:'塔伦·霍顿-塔克',pos:'SG',ovr:80,age:26},
+  {name:'凯利·奥利尼克',pos:'PF',ovr:79,age:35},{name:'克里斯·邓恩',pos:'PG',ovr:78,age:32},
+  {name:'西蒙尼·冯泰奇奥',pos:'SF',ovr:77,age:29},{name:'布赖斯·森萨博',pos:'SG',ovr:75,age:23}
+],
+'波特兰开拓者': [
+  {name:'安芬尼·西蒙斯',pos:'PG',ovr:86,age:27},{name:'杰拉米·格兰特',pos:'PF',ovr:85,age:32},
+  {name:'谢顿·夏普',pos:'SG',ovr:83,age:23},{name:'斯科特·亨德森',pos:'PG',ovr:82,age:22},
+  {name:'马蒂斯·赛布尔',pos:'SG',ovr:81,age:29},{name:'杜普·里斯',pos:'C',ovr:80,age:26},
+  {name:'克里斯·默里',pos:'SF',ovr:78,age:24},{name:'罗伯特·威廉姆斯',pos:'C',ovr:77,age:29},
+  {name:'贾巴里·沃克',pos:'PF',ovr:76,age:24}
+]
+};
+
+/* ============================================================
+   工具 & 状态
+============================================================ */
+const ATTRS=['篮板','助攻','抢断','盖帽','内线得分','三分','罚球'];
+const HISTORICAL_STARS=[
+{name:'迈克尔·乔丹',team:'公牛',attrs:{篮板:68,助攻:72,抢断:85,盖帽:75,内线得分:88,三分:65,罚球:82}},
+{name:'勒布朗·詹姆斯',team:'骑士',attrs:{篮板:72,助攻:80,抢断:75,盖帽:68,内线得分:85,三分:72,罚球:70}},
+{name:'科比·布莱恩特',team:'湖人',attrs:{篮板:55,助攻:62,抢断:65,盖帽:52,内线得分:74,三分:70,罚球:75}},
+{name:'斯蒂芬·库里',team:'勇士',attrs:{篮板:52,助攻:75,抢断:70,盖帽:35,内线得分:72,三分:88,罚球:88}},
+{name:'蒂姆·邓肯',team:'马刺',attrs:{篮板:88,助攻:65,抢断:58,盖帽:85,内线得分:88,三分:35,罚球:68}},
+{name:'沙奎尔·奥尼尔',team:'魔术',attrs:{篮板:86,助攻:50,抢断:45,盖帽:88,内线得分:90,三分:25,罚球:48}},
+{name:'魔术师约翰逊',team:'湖人',attrs:{篮板:74,助攻:88,抢断:78,盖帽:45,内线得分:78,三分:60,罚球:78}},
+{name:'尼古拉·约基奇',team:'掘金',attrs:{篮板:70,助攻:72,抢断:60,盖帽:50,内线得分:75,三分:75,罚球:78}},
+{name:'凯文·杜兰特',team:'超音速',attrs:{篮板:62,助攻:63,抢断:63,盖帽:55,内线得分:84,三分:72,罚球:87}},
+{name:'哈基姆·奥拉朱旺',team:'火箭',attrs:{篮板:84,助攻:52,抢断:65,盖帽:90,内线得分:89,三分:20,罚球:70}}
+];
+const DRAFT_CLASS_META=[
+// 真实历史选秀库：每届收录真实前10顺位，并记录球员现实主要位置。
+{year:1984,name:'1984届：真实历史选秀',players:[{name:'哈基姆·奥拉朱旺',pos:'C'},{name:'萨姆·鲍伊',pos:'C'},{name:'迈克尔·乔丹',pos:'SG'},{name:'萨姆·帕金斯',pos:'PF'},{name:'查尔斯·巴克利',pos:'PF'},{name:'梅尔文·特平',pos:'PF'},{name:'阿尔文·罗伯特森',pos:'SG'},{name:'兰卡斯特·戈登',pos:'SG'},{name:'奥蒂斯·索普',pos:'PF'},{name:'莱昂·伍德',pos:'SG'}]},
+{year:1992,name:'1992届：真实历史选秀',players:[{name:'沙奎尔·奥尼尔',pos:'C'},{name:'阿朗佐·莫宁',pos:'C'},{name:'克里斯蒂安·莱特纳',pos:'PF'},{name:'吉姆·杰克逊',pos:'SG'},{name:'拉方索·埃利斯',pos:'PF'},{name:'汤姆·古格利奥塔',pos:'PF'},{name:'波普耶·琼斯',pos:'PF'},{name:'哈罗德·迈纳',pos:'SG'},{name:'沃尔特·威廉姆斯',pos:'SG'},{name:'克拉伦斯·韦瑟斯庞',pos:'PF'}]},
+{year:1996,name:'1996届：真实历史选秀',players:[{name:'阿伦·艾弗森',pos:'PG'},{name:'马库斯·坎比',pos:'C'},{name:'谢里夫·阿布杜·拉希姆',pos:'PF'},{name:'斯蒂芬·马布里',pos:'PG'},{name:'雷·阿伦',pos:'SG'},{name:'安东尼·沃克',pos:'PF'},{name:'洛伦岑·赖特',pos:'C'},{name:'克里·基特尔斯',pos:'SG'},{name:'萨马基·沃克',pos:'C'},{name:'埃里克·丹皮尔',pos:'C'}]},
+{year:2003,name:'2003届：真实历史选秀',players:[{name:'勒布朗·詹姆斯',pos:'SF'},{name:'达科·米利西奇',pos:'C'},{name:'卡梅隆·安东尼',pos:'SF'},{name:'克里斯·波什',pos:'PF'},{name:'德维恩·韦德',pos:'SG'},{name:'克里斯·卡曼',pos:'C'},{name:'柯克·辛里奇',pos:'PG'},{name:'T.J. 福特',pos:'PG'},{name:'迈克·斯维特尼',pos:'PF'},{name:'贾维斯·海耶斯',pos:'SF'}]},
+{year:2008,name:'2008届：真实历史选秀',players:[{name:'德里克·罗斯',pos:'PG'},{name:'迈克尔·比斯利',pos:'PF'},{name:'O.J. 梅奥',pos:'SG'},{name:'拉塞尔·威斯布鲁克',pos:'PG'},{name:'凯文·乐福',pos:'PF'},{name:'达尼罗·加里纳利',pos:'SF'},{name:'埃里克·戈登',pos:'SG'},{name:'乔·亚历山大',pos:'PF'},{name:'D.J. 奥古斯丁',pos:'PG'},{name:'布鲁克·洛佩斯',pos:'C'}]},
+{year:2009,name:'2009届：真实历史选秀',players:[{name:'布雷克·格里芬',pos:'PF'},{name:'哈希姆·塔比特',pos:'C'},{name:'詹姆斯·哈登',pos:'SG'},{name:'泰瑞克·埃文斯',pos:'SG'},{name:'里基·卢比奥',pos:'PG'},{name:'乔尼·弗林',pos:'PG'},{name:'斯蒂芬·库里',pos:'PG'},{name:'乔丹·希尔',pos:'PF'},{name:'德马尔·德罗赞',pos:'SG'},{name:'布兰登·詹宁斯',pos:'PG'}]},
+{year:2011,name:'2011届：真实历史选秀',players:[{name:'凯里·欧文',pos:'PG'},{name:'德里克·威廉姆斯',pos:'PF'},{name:'埃内斯·坎特',pos:'C'},{name:'特里斯坦·汤普森',pos:'PF'},{name:'约纳斯·瓦兰丘纳斯',pos:'C'},{name:'比斯马克·比永博',pos:'C'},{name:'肯巴·沃克',pos:'PG'},{name:'布兰登·奈特',pos:'PG'},{name:'克莱·汤普森',pos:'SG'},{name:'吉默·弗雷戴特',pos:'SG'}]},
+{year:2018,name:'2018届：真实历史选秀',players:[{name:'德安德烈·艾顿',pos:'C'},{name:'马文·巴格利三世',pos:'PF'},{name:'卢卡·东契奇',pos:'PG'},{name:'贾伦·杰克逊二世',pos:'PF'},{name:'特雷·杨',pos:'PG'},{name:'穆罕默德·班巴',pos:'C'},{name:'温德尔·卡特二世',pos:'C'},{name:'科林·塞克斯顿',pos:'PG'},{name:'凯文·诺克斯二世',pos:'SF'},{name:'米卡尔·布里奇斯',pos:'SF'}]},
+{year:2019,name:'2019届：真实历史选秀',players:[{name:'锡安·威廉姆森',pos:'PF'},{name:'贾·莫兰特',pos:'PG'},{name:'RJ·巴雷特',pos:'SF'},{name:'德安德烈·亨特',pos:'SF'},{name:'达柳斯·加兰',pos:'PG'},{name:'贾勒特·卡尔弗',pos:'SG'},{name:'科比·怀特',pos:'PG'},{name:'贾克森·海耶斯',pos:'C'},{name:'八村塁',pos:'PF'},{name:'卡姆·雷迪什',pos:'SF'}]},
+{year:2020,name:'2020届：真实历史选秀',players:[{name:'安东尼·爱德华兹',pos:'SG'},{name:'詹姆斯·怀斯曼',pos:'C'},{name:'拉梅洛·鲍尔',pos:'PG'},{name:'帕特里克·威廉姆斯',pos:'PF'},{name:'艾萨克·奥科罗',pos:'SG'},{name:'奥涅卡·奥孔古',pos:'PF'},{name:'基利安·海斯',pos:'PG'},{name:'奥比·托平',pos:'PF'},{name:'德尼·阿夫迪亚',pos:'SF'},{name:'杰伦·史密斯',pos:'PF'}]},
+{year:2021,name:'2021届：真实历史选秀',players:[{name:'凯德·坎宁安',pos:'PG'},{name:'杰伦·格林',pos:'SG'},'埃文·莫布利',{name:'斯科蒂·巴恩斯',pos:'SF'},{name:'杰伦·萨格斯',pos:'SG'},{name:'约什·吉迪',pos:'PG'},{name:'乔纳森·库明加',pos:'SF'},{name:'弗朗茨·瓦格纳',pos:'SF'},{name:'戴维恩·米切尔',pos:'PG'},{name:'齐亚雷·威廉姆斯',pos:'SF'}]},
+{year:2022,name:'2022届：真实历史选秀',players:[{name:'保罗·班切罗',pos:'PF'},{name:'切特·霍姆格伦',pos:'C'},{name:'贾巴里·史密斯二世',pos:'PF'},{name:'基根·穆雷',pos:'PF'},{name:'杰登·艾维',pos:'SG'},{name:'本尼迪克特·马瑟林',pos:'SG'},{name:'谢顿·夏普',pos:'SG'},{name:'戴森·丹尼尔斯',pos:'PG'},{name:'杰里米·索汉',pos:'PF'},{name:'约翰尼·戴维斯',pos:'SG'}]},
+{year:2023,name:'2023届：真实历史选秀',players:[{name:'维克托·文班亚马',pos:'C'},{name:'布兰登·米勒',pos:'SF'},{name:'斯库特·亨德森',pos:'PG'},{name:'阿门·汤普森',pos:'PG'},{name:'奥萨尔·汤普森',pos:'SF'},{name:'卡姆·惠特莫尔',pos:'SF'},{name:'贾勒斯·沃克',pos:'PF'},{name:'比拉尔·库利巴利',pos:'SF'},{name:'泰勒·亨德里克斯',pos:'PF'},{name:'杰伦·胡德-希菲诺',pos:'PG'}]},
+{year:2024,name:'2024届：真实历史选秀',players:[{name:'扎卡里·里萨谢',pos:'SF'},{name:'亚历山大·萨尔',pos:'C'},{name:'里德·谢泼德',pos:'SG'},{name:'多诺万·克林根',pos:'C'},{name:'伊斯梅尔·迪亚巴特',pos:'PF'},{name:'罗恩·霍兰二世',pos:'SG'},{name:'蒂贾恩·萨隆',pos:'PF'},{name:'罗伯特·迪林厄姆',pos:'PG'},{name:'扎克·伊迪',pos:'C'},{name:'科迪·威廉姆斯',pos:'SG'}]},
+{year:2025,name:'2025届：真实历史选秀',players:[{name:'库珀·弗拉格',pos:'SF'},{name:'迪伦·哈珀',pos:'PG'},{name:'VJ·埃奇库姆',pos:'SG'},{name:'康·克内普尔',pos:'SF'},{name:'埃斯·贝利',pos:'SF'},{name:'特雷·约翰逊',pos:'SG'},{name:'杰里迈亚·菲尔斯',pos:'PG'},{name:'埃戈尔·德明',pos:'PG'},{name:'科林·默里-博伊尔斯',pos:'PF'},{name:'卡曼·马卢阿奇',pos:'C'}]},
+{year:2026,name:'2026届：真实历史选秀',players:[{name:'AJ·迪班萨',pos:'SF'},{name:'达林·彼得森',pos:'PG'},{name:'卡梅隆·布泽尔',pos:'PF'},{name:'凯勒布·威尔逊',pos:'PF'},{name:'基顿·瓦格勒',pos:'SF'},{name:'米克尔·布朗二世',pos:'SF'},{name:'达里乌斯·阿库夫二世',pos:'C'},{name:'金斯顿·弗莱明斯',pos:'PG'},{name:'莫雷兹·约翰逊',pos:'SG'},{name:'诺兰·特劳雷',pos:'PG'}]}
+];
+function buildDraftClasses(){ return DRAFT_CLASS_META.map(meta=>({...meta,players:[...meta.players]})); }
+const DRAFT_CLASSES=buildDraftClasses();
+// 历史超巨：这些球员在新秀/年轻阶段获得略高于普通新秀的成长速度，
+// 让历史级球员更容易在生涯前期逐步成长到与现实表现更接近的水平。
+const HISTORICAL_SUPERSTARS=new Set([
+  '哈基姆·奥拉朱旺','迈克尔·乔丹','查尔斯·巴克利','沙奎尔·奥尼尔','阿伦·艾弗森',
+  '雷·阿伦','勒布朗·詹姆斯','卡梅隆·安东尼','克里斯·波什','德维恩·韦德',
+  '德里克·罗斯','拉塞尔·威斯布鲁克','凯文·乐福','布雷克·格里芬','詹姆斯·哈登',
+  '斯蒂芬·库里','凯文·杜兰特','凯里·欧文','克莱·汤普森','科怀·伦纳德',
+  '卢卡·东契奇','尼古拉·约基奇','扬尼斯·阿德托昆博','安东尼·爱德华兹',
+  '维克托·文班亚马','保罗·班切罗','特雷·杨','杰森·塔图姆','锡安·威廉姆森'
+]);
+function isHistoricalSuperstar(player){
+  return !!player && HISTORICAL_SUPERSTARS.has(player.name) && !player.isUser;
+}
+
+const EAST=['波士顿凯尔特人','纽约尼克斯','费城76人','密尔沃基雄鹿','克利夫兰骑士','迈阿密热火','奥兰多魔术','印第安纳步行者','芝加哥公牛','亚特兰大老鹰','多伦多猛龙','布鲁克林篮网','夏洛特黄蜂','华盛顿奇才','底特律活塞'];
+const WEST=['俄克拉荷马雷霆','丹佛掘金','明尼苏达森林狼','达拉斯独行侠','菲尼克斯太阳','洛杉矶湖人','金州勇士','圣安东尼奥马刺','休斯顿火箭','洛杉矶快船','萨克拉门托国王','孟菲斯灰熊','新奥尔良鹈鹕','犹他爵士','波特兰开拓者'];
+const ALL_TEAMS=[...EAST,...WEST];
+const BASE={};
+ALL_TEAMS.forEach(t=>{
+  const roster=REAL_ROSTERS[t]||[];
+  // 球队基础实力 = 全队球员 OVR 算术平均值，不再额外加成。
+  BASE[t]=roster.length
+    ? +(roster.reduce((sum,p)=>sum+p.ovr,0)/roster.length).toFixed(1)
+    : 75;
+});
+
+// 真实姓名池
+const NBA_STARS = [
+  '斯蒂芬·库里','勒布朗·詹姆斯','凯文·杜兰特','扬尼斯·阿德托昆博','尼古拉·约基奇',
+  '卢卡·东契奇','乔尔·恩比德','杰森·塔图姆','德文·布克','安东尼·戴维斯',
+  '谢伊·吉尔杰斯-亚历山大','多诺万·米切尔','贾·莫兰特','达米安·利拉德','杰伦·布朗',
+  '安东尼·爱德华兹','德阿隆·福克斯','泰雷塞·哈利伯顿','贾马尔·穆雷','凯里·欧文',
+  '锡安·威廉森','卡尔-安东尼·唐斯','巴姆·阿德巴约','多曼塔斯·萨博尼斯','保罗·乔治',
+  '吉米·巴特勒','科怀·伦纳德','布拉德利·比尔','扎克·拉文','德玛尔·德罗赞',
+  '朱·霍勒迪','德雷蒙德·格林','克莱·汤普森','克里斯·保罗','拉塞尔·威斯布鲁克',
+  '詹姆斯·哈登','维克托·文班亚马','切特·霍姆格伦','保罗·班凯罗','埃文·莫布里',
+  '斯科蒂·巴恩斯','贾伦·杰克逊','米卡尔·布里奇斯','奥斯汀·里夫斯','德里克·怀特',
+  '阿隆·戈登','迈克尔·波特','拉梅洛·鲍尔','特雷·杨','鲁迪·戈贝尔',
+  '克里斯塔普斯·波尔津吉斯','阿尔佩伦·申京','泰雷塞·马克西','杰伦·布伦森','朱利叶斯·兰德尔'
+];
+const FIRST_NAMES = ['特雷','德文','杰伦','马库斯','凯文','克里斯','安东尼','德里克','乔丹','保罗','詹姆斯','迈克尔','约翰','大卫','贾斯汀','泰勒','卡梅伦','科里','特里斯坦','多诺万','塞斯','卡莱布','科林','达里厄斯','加里','以赛亚','约什','凯尔','卢克','马利克','特里','肖恩','伊莱贾','多米尼克','杰里米','扎克','伊曼纽尔','哈里森','兰斯','文森特'];
+const LAST_NAMES = ['史密斯','约翰逊','威廉姆斯','布朗','琼斯','米勒','戴维斯','威尔逊','安德森','泰勒','托马斯','杰克逊','怀特','哈里斯','马丁','汤普森','加兰','格林','克拉克','罗宾逊','沃克','罗素','伍德','特纳','哈里森','卡特','霍华德','福克斯','贝克','莫里斯','刘易斯','李','亚当斯','坎贝尔','帕克','埃文斯','爱德华兹','柯林斯','斯图尔特','桑切斯'];
+let NAME_POOL = [], NAME_POOL_INITIALIZED = false;
+function getRealisticName(){
+  if(!NAME_POOL_INITIALIZED){NAME_POOL=shuffle([...NBA_STARS]);NAME_POOL_INITIALIZED=true;}
+  if(NAME_POOL.length>0) return NAME_POOL.pop();
+  return pick(FIRST_NAMES)+'·'+pick(LAST_NAMES);
+}
+
+const INITIAL_STATE={
+step:'create', seasonYear:2026, careerSeason:1, age:22,
+playerName:'自建超巨', position:'PG', userTeam:'洛杉矶湖人',
+attrs:{}, finalOVR:0, rerollsLeft:3, currentAttrIndex:0,
+contractYearsLeft:4,
+careerStats:{gp:0,pts:0,reb:0,ast:0,stl:0,blk:0,rings:0,mvps:0,dpoys:0,roys:0,allNba:0,allDef:0,finalsMvps:0},
+seasonStats:{gp:0,pts:0,reb:0,ast:0,stl:0,blk:0},
+teamRosters:{}, teamStrengths:{...BASE}, news:[], tradeHistory:[],
+standing:null, playin:null, playoffs:null, awards:null,
+draftResult:null, draftHistory:[], freeAgencyOffers:[], nextRookies:[], currentRookies:[], rookieDraftYear:2025,
+remainingPoints:0,tempAllocated:{}, agingDrops:{},
+gameLog:[], currentOpponent:'', currentGame:null, gamesPlayed:0,
+userInjury:{gamesOut:0,name:'',detail:'',ovrDrop:0}, userInjuryEventsThisSeason:0, eventHistory:[], seasonEventGames:[], seasonEventsTriggered:0,
+seasonPhase:'regular', saveVersion:5.15, aiRetirements:[], aiDevelopment:[]
+};;
+
+let STATE={
+step:'create', seasonYear:2026, careerSeason:1, age:22,
+playerName:'自建超巨', position:'PG', userTeam:'洛杉矶湖人',
+attrs:{}, finalOVR:0, rerollsLeft:3, currentAttrIndex:0,
+contractYearsLeft:4,
+careerStats:{gp:0,pts:0,reb:0,ast:0,stl:0,blk:0,rings:0,mvps:0,dpoys:0,roys:0,allNba:0,allDef:0,finalsMvps:0},
+seasonStats:{gp:0,pts:0,reb:0,ast:0,stl:0,blk:0},
+teamRosters:{}, teamStrengths:{...BASE}, news:[], tradeHistory:[],
+standing:null, playin:null, playoffs:null, awards:null,
+draftResult:null, draftHistory:[], freeAgencyOffers:[], nextRookies:[], currentRookies:[], rookieDraftYear:2025,
+remainingPoints:0,tempAllocated:{}, agingDrops:{},
+gameLog:[], currentOpponent:'', currentGame:null, gamesPlayed:0,
+userInjury:{gamesOut:0,name:'',detail:'',ovrDrop:0}, userInjuryEventsThisSeason:0, eventHistory:[], seasonEventGames:[], seasonEventsTriggered:0,
+seasonPhase:'regular', saveVersion:5.15, aiRetirements:[], aiDevelopment:[]
+};
+
+function clone(v){return JSON.parse(JSON.stringify(v))}
+function rand(a,b){return Math.random()*(b-a)+a}
+function rint(a,b){return Math.floor(rand(a,b+1))}
+function pick(arr){return arr[Math.floor(Math.random()*arr.length)]}
+function shuffle(arr){return [...arr].sort(()=>Math.random()-.5)}
+function clamp(n,a,b){return Math.max(a,Math.min(b,n))}
+function calcOVR(attrs){
+ let vals=ATTRS.map(k=>clamp(attrs[k]||50,1,99)).sort((a,b)=>b-a);
+ let w=vals[0]*.35+vals[1]*.25+vals[2]*.20+vals[3]*.10+vals[4]*.05+vals[5]*.03+vals[6]*.02;
+ return clamp(Math.round(w*1.08+4),60,99);
+}
+function posText(p){return {PG:'控卫',SG:'分卫',SF:'小前锋',PF:'大前锋',C:'中锋'}[p]||p}
+
+/* =========================
+   存档/读档
+========================= */
+function saveGame(){ return false; }
+function loadGame(){ return false; }
+function resetGame(){
+  // 强制彻底重置当前生涯，并直接进入创建球员页面。
+  STATE = clone(INITIAL_STATE);
+  STATE.step='create';
+  STATE.saveVersion=5.16;
+  STATE.userTeam='洛杉矶湖人';
+  STATE.playerName='自建超巨';
+  STATE.position='PG';
+  STATE.attrs={};
+  STATE.finalOVR=0;
+  STATE.currentAttrIndex=0;
+  STATE.rerollsLeft=3;
+  STATE.gamesPlayed=0;
+  STATE.seasonPhase='regular';
+  buildRealRoster();
+  ensureUserOnRoster();
+  rebuildTeamStrengths();
+  render();
+}
+function confirmReset(){resetGame()}
+
+/* =========================
+   真实阵容生成器 (仅初始化)
+========================= */
+function buildRealRoster(){
+  STATE.teamRosters = {};
+  ALL_TEAMS.forEach(team => {
+    const realData = REAL_ROSTERS[team] || [];
+    const roster = realData.map((p, i) => ({
+      id: team+'-'+i,
+      name: p.name,
+      pos: p.pos,
+      ovr: clamp(p.ovr + rint(-2,2), 65, 97),
+      age: p.age || rint(22,35),
+      role: p.role || (i<3?'核心': i<7?'主要轮换':'替补'),
+      salary: Math.round(clamp(p.ovr * 0.4 + rint(2,8), 3, 35)),
+      isUser: false
+    }));
+    STATE.teamRosters[team] = roster;
+  });
+}
+
+function ensureUserOnRoster(){
+  if (Object.keys(STATE.teamRosters).length === 0) {
+    buildRealRoster();
+  }
+
+  // 强制保证自建球员在全联盟阵容中只存在一份。
+  // 无论之前在哪支球队，换队后先从所有旧球队移除，再加入新球队。
+  ALL_TEAMS.forEach(team=>{
+    const roster=STATE.teamRosters[team]||[];
+    STATE.teamRosters[team]=roster.filter(p=>!p.isUser && p.id!=='USER');
+  });
+
+  if(!STATE.teamRosters[STATE.userTeam]) STATE.teamRosters[STATE.userTeam]=[];
+  STATE.teamRosters[STATE.userTeam].unshift({
+    id:'USER',
+    name:STATE.playerName,
+    pos:STATE.position,
+    ovr:STATE.finalOVR,
+    age:STATE.age,
+    role:'球队核心',
+    salary:Math.max(10,Math.round(STATE.finalOVR/2)),
+    isUser:true
+  });
+}
+
+// 阵容完整性检查：修复旧存档或历史版本产生的自建球员重复问题。
+function normalizeRosters(){
+  if(!STATE.teamRosters || Object.keys(STATE.teamRosters).length===0){
+    buildRealRoster();
+  }
+  ALL_TEAMS.forEach(team=>{
+    if(!Array.isArray(STATE.teamRosters[team])) STATE.teamRosters[team]=[];
+  });
+  // 自建球员只允许出现在 STATE.userTeam。
+  ALL_TEAMS.forEach(team=>{
+    if(team!==STATE.userTeam){
+      STATE.teamRosters[team]=STATE.teamRosters[team].filter(p=>!p.isUser && p.id!=='USER');
+    }
+  });
+  ensureUserOnRoster();
+}
+
+function rebuildTeamStrengths(){
+  ALL_TEAMS.forEach(t=>{
+    const roster=STATE.teamRosters[t]||[];
+    // 核心规则：球队实力完全等于当前全队球员 OVR 的算术平均值。
+    // 包括自建球员、交易后的球员以及后续成长后的球员。
+    const strength = roster.length
+      ? roster.reduce((sum,p)=>sum+(Number(p.ovr)||0),0) / roster.length
+      : (BASE[t] || 75);
+    STATE.teamStrengths[t]=+strength.toFixed(1);
+  });
+}
+
+
+/* =========================
+   AI球员年龄成长 / 衰退系统
+   规则：
+   1. 不包含自建球员。
+   2. 32岁及以下：每个休赛季都有概率进步，年轻球员概率更高。
+   3. 33岁起：每年小幅退步，年龄越大平均退步幅度越大。
+   4. 能力值（OVR）<=70：休赛季结束后退役，从所有球队名单移除。
+========================= */
+function updateAIGrowthAndRetirement(){
+  STATE.aiRetirements=[];
+  STATE.aiDevelopment=[];
+
+  const retirements=[];
+  const development=[];
+
+  ALL_TEAMS.forEach(team=>{
+    const roster=STATE.teamRosters[team]||[];
+    const nextRoster=[];
+
+    roster.forEach(player=>{
+      if(player.isUser){
+        nextRoster.push(player);
+        return;
+      }
+
+      let age=Math.max(18, Number(player.age)||25);
+      let ovr=clamp(Number(player.ovr)||70,1,99);
+      const oldAge=age;
+      const oldOvr=ovr;
+
+      // 每进入一个新赛季，真实球员年龄+1。
+      age += 1;
+
+      let delta=0;
+
+      // 32岁及以下：仍处于发展期，每年都有概率提升。
+      // 年龄越小，成长概率越高；31-32岁仍保留成长机会。
+      if(age<=32){
+        const historicalSuperstar=isHistoricalSuperstar(player);
+        // 历史超巨年轻阶段成长略快：提高成长概率，并适度提高+2的出现率，
+        // 但仍然限制为小幅逐年成长，避免一两个赛季直接跳到巅峰。
+        const baseChance=clamp(0.78-(age-20)*0.018,0.56,0.78);
+        const developmentChance=historicalSuperstar
+          ? clamp(baseChance+0.10,0.68,0.88)
+          : baseChance;
+        if(Math.random()<developmentChance && ovr<99){
+          delta=historicalSuperstar
+            ? (Math.random()<0.68?1:2)
+            : (Math.random()<0.82?1:2);
+          ovr=clamp(ovr+delta,1,99);
+        }
+      }
+      // 33岁以后：逐年加重的小幅衰退。
+      else{
+        const yearsOver32=age-32;
+        const declineChance=clamp(0.48+yearsOver32*0.045,0.48,0.78);
+        if(Math.random()<declineChance){
+          // 33-35岁通常掉1点；36岁后逐渐提高出现-2的概率。
+          if(age<=35){
+            delta=-1;
+          }else if(age<=38){
+            delta=Math.random()<0.72?-1:-2;
+          }else if(age<=40){
+            delta=Math.random()<0.55?-1:-2;
+          }else{
+            delta=Math.random()<0.35?-1:-2;
+          }
+          ovr=Math.max(1,ovr+delta);
+        }
+      }
+
+      player.age=age;
+      player.ovr=ovr;
+
+      if(delta!==0){
+        development.push({
+          team,
+          name:player.name,
+          age,
+          oldOvr,
+          newOvr:ovr,
+          delta
+        });
+      }
+
+      // 能力值70以下（含70）直接退役，不再进入新赛季阵容。
+      if(ovr<=70){
+        retirements.push({team,name:player.name,age,ovr});
+        return;
+      }
+
+      nextRoster.push(player);
+    });
+
+    STATE.teamRosters[team]=nextRoster;
+  });
+
+  STATE.aiRetirements=retirements;
+  STATE.aiDevelopment=development;
+
+  // 让新赛季球队实力立即使用更新后的球员能力值重新计算。
+  rebuildTeamStrengths();
+
+  // 记录少量重要的成长/退役动态，避免新闻过于拥挤。
+  retirements.forEach(x=>{
+    addNews('球员退役',`${x.name}（${x.age}岁，OVR ${x.ovr}）因能力值降至70以下，从${x.team}退役。`,'退役');
+  });
+}
+
+/* =========================
+   新闻 & 工具
+========================= */
+function addNews(title,body,type='新闻'){
+ if(!STATE.news) STATE.news=[];
+ STATE.news.unshift({time:`${STATE.seasonYear}-${String(rint(10,28)).padStart(2,'0')} ${String(rint(8,22)).padStart(2,'0')}:${String(rint(0,59)).padStart(2,'0')}`,title,body,type});
+ if(STATE.news.length>80)STATE.news.length=80;
+}
+function userPlayer(){return {name:STATE.playerName,pos:STATE.position,ovr:STATE.finalOVR,age:STATE.age}}
+
+function generateUserGameStats(){
+ const base=STATE.finalOVR-65;
+ let pts=clamp(rand(9,14)+base*.48,8,45);
+ let reb,ast,stl,blk;
+ const astBase=STATE.attrs.助攻/10;
+ if(STATE.position==='PG'){reb=rand(2.8,5.2)+(STATE.attrs.篮板-60)*.02;ast=astBase+rand(-.7,.9);stl=rand(.8,1.6)+(STATE.attrs.抢断-60)*.012;blk=rand(.15,.5);}
+ else if(STATE.position==='SG'){reb=rand(3.2,5.8);ast=astBase+rand(-1.0,.6);stl=rand(.8,1.6)+(STATE.attrs.抢断-60)*.012;blk=rand(.2,.7);}
+ else if(STATE.position==='SF'){reb=rand(5,7.8)+(STATE.attrs.篮板-60)*.02;ast=astBase+rand(-1.0,.5);stl=rand(.8,1.5)+(STATE.attrs.抢断-60)*.012;blk=rand(.35,.95)+(STATE.attrs.盖帽-60)*.015;}
+ else if(STATE.position==='PF'){reb=rand(6.5,10)+(STATE.attrs.篮板-60)*.03;ast=astBase+rand(-1.1,.4);stl=rand(.6,1.3)+(STATE.attrs.抢断-60)*.012;blk=rand(.7,1.8)+(STATE.attrs.盖帽-60)*.025;}
+ else if(STATE.position==='C'){reb=rand(9,13)+(STATE.attrs.篮板-60)*.03;ast=astBase+rand(-1.2,.3);stl=rand(.4,1.0)+(STATE.attrs.抢断-60)*.01;blk=rand(1.4,2.8)+(STATE.attrs.盖帽-60)*.03;}
+ return {pts:Math.max(2,Math.round(pts)), reb:Math.max(0,Math.round(reb)), ast:Math.max(0,Math.round(ast)), stl:Math.max(0,Math.round(stl)), blk:Math.max(0,Math.round(blk))};
+}
+
+/* =========================
+   比赛随机事件系统
+   小概率、低频率；事件为虚构演绎，灵感来自公开NBA伤病/场外新闻的类型。
+========================= */
+const RANDOM_EVENT_TEMPLATES = [
+  // 伤病类：常规比赛伤病
+  {type:'injury', weight:18, title:'轻微伤病', details:['落地时脚踝轻微扭伤','一次对抗后膝盖出现不适','手指挫伤但需要观察','背部肌肉轻微拉伤'], minOut:1,maxOut:4,minDrop:1,maxDrop:1},
+  {type:'injury', weight:8, title:'中等伤病', details:['腿部拉伤，队医建议休养','肩部扭伤，需要暂时休战','膝盖撞伤并出现肿胀'], minOut:3,maxOut:9,minDrop:1,maxDrop:2},
+  {type:'injury', weight:3, title:'较重伤病', details:['一次激烈对抗后出现较严重伤情','落地后出现明显韧带不适，需要康复'], minOut:8,maxOut:18,minDrop:2,maxDrop:3},
+
+  // 场外趣事
+  {type:'accident', weight:4, title:'场外离奇插曲', details:['球队包机遭遇机械故障，安全紧急备降，随后确认全队平安','酒店突然触发消防警报，球队半夜集体撤离，第二天训练被迫推迟','球队大巴途中遇到道路临时封闭，全队绕行数十公里才赶到球馆','训练结束后自动售货机卡住球员装备，工作人员折腾半小时才取出来'], minOut:0,maxOut:2,minDrop:0,maxDrop:1},
+  {type:'fun', weight:8, title:'更衣室趣事', details:['吉祥物偷偷把球员训练鞋藏了起来，整个更衣室笑翻','赛前发布的一段离谱挑战视频意外爆火','球队训练馆来了只迷路的小动物，训练短暂中断，全队围观','赛前灯光彩排出了意外，全队在昏暗环境下完成了一次另类训练'], minOut:0,maxOut:0,minDrop:0,maxDrop:0},
+
+  // 自建球员专属：正面成长事件概率优先于负面属性事件
+  {type:'userFun', weight:8, title:'自建球员离奇趣事', userOnly:true, details:[
+    '入住酒店后发现房门感应器失灵，穿着拖鞋站在走廊等工作人员开门，第二天全队笑了一整天',
+    '训练结束准备离开球馆，自动门突然卡住，只能从员工通道绕行，结果阴差阳错参加了保洁团队的电梯维修会议',
+    '机场安检后发现篮球鞋被传送带送到了另一条行李带，工作人员最后从一堆乐器箱里找回了它',
+    '去球队餐厅拿水时，厨房机器人突然失控，把一整盘纸巾精准地吹到了面前',
+    '录制球队宣传片时背景LED屏突然切换成儿童生日动画，导演没有喊停，意外拍出热门花絮',
+    '训练时篮球滚进器材仓库，寻找过程中翻出十年前的投篮机，全队临时玩起老式投篮挑战赛',
+    '参加社区活动时，一只训练有素的搜救犬叼走了帽子，绕场一圈才回来，现场孩子们全部围了过去',
+    '在球队大巴上睡着，醒来发现自己被队友贴满了“本车最佳第六人”贴纸',
+    '拍鞋子广告时鞋带突然断裂，镜头却恰好拍下漂亮转身动作，广告公司决定保留这个意外镜头',
+    '赛前热身误触儿童发球装置，几十只迷你泡沫篮球同时发射，全队花了五分钟清理场地'
+  ], minOut:0,maxOut:0,minDrop:0,maxDrop:0},
+
+  // 自建球员正面成长事件
+  {type:'training', weight:8, title:'训练效果提升', details:['主动加练投篮，连续命中率惊人','赛后留下专项训练，训练师给出高度评价','研究录像后改进技术动作，训练效率明显提升','临时增加核心力量训练，本周训练效果特别好'], minOut:0,maxOut:0,minDrop:0,maxDrop:0},
+  {type:'breakthrough', weight:4, title:'意外突破', details:['一次训练中的偶然尝试产生奇效','调整出手节奏后，技术动作突然变得非常流畅','训练师发现新的技术细节，球员迅速掌握'], minOut:0,maxOut:0,minDrop:0,maxDrop:0},
+  {type:'discipline', weight:3, title:'纪律插曲', details:['赛后与对手发生口角，被追加短暂停赛','累计技术犯规达到处罚线，联盟追加停赛'], minOut:1,maxOut:3,minDrop:0,maxDrop:0},
+
+  // 以下为“现实奇闻灵感改编”的游戏事件；事件中的主角会动态替换为当前游戏阵容里的真实球员姓名，
+  // 不表示这些故事实际发生在被替换后的球员身上。
+  {type:'realWeirdInjury', weight:10, title:'奇葩受伤：笑到拉伤', details:['{PLAYER}听队友讲了个离谱笑话，笑得前仰后合还不断手舞足蹈，第二天竟因大腿肌肉拉伤缺席训练'], minOut:1,maxOut:3,minDrop:1,maxDrop:1},
+  {type:'realWeirdInjury', weight:9, title:'奇葩受伤：庆祝熊抱', details:['{PLAYER}庆祝时给队友一个过于用力的熊抱，结果对方肩部意外脱臼，球队只好临时调整轮换'], minOut:2,maxOut:6,minDrop:0,maxDrop:0},
+  {type:'realWeirdInjury', weight:6, title:'奇葩受伤：揉眼睛翻车', details:['{PLAYER}在演出现场被灯光晃到，随手揉了揉眼睛，没想到手上残留的护理产品刺激了眼睛，队医建议暂时休息'], minOut:1,maxOut:4,minDrop:1,maxDrop:1},
+  {type:'realWeirdInjury', weight:4, title:'奇葩受伤：饮水机惊魂', details:['{PLAYER}在慈善活动休息时去喝水，饮水设备突然发生漏电故障，球员被紧急检查后确认没有大碍，但仍被安排休养'], minOut:1,maxOut:3,minDrop:0,maxDrop:1},
+  {type:'realWeirdInjury', weight:8, title:'奇葩受伤：家中楼梯翻车', details:['{PLAYER}回家时被楼梯旁的杂物绊倒，从台阶上摔下，第二天小腿出现明显疼痛'], minOut:2,maxOut:6,minDrop:1,maxDrop:1},
+  {type:'realWeirdInjury', weight:5, title:'奇葩受伤：床铺塌陷', details:['{PLAYER}凌晨睡梦中翻身，床架突然塌陷，脚趾被床板压伤，只能暂时减少训练量'], minOut:1,maxOut:4,minDrop:1,maxDrop:1},
+  {type:'realWeirdInjury', weight:5, title:'奇葩受伤：开门摔倒', details:['{PLAYER}开房门时重心不稳直接摔倒，右手着地后出现骨裂迹象，球队安排进一步检查'], minOut:3,maxOut:8,minDrop:1,maxDrop:2},
+  {type:'realWeirdInjury', weight:5, title:'奇葩受伤：切水果忘收刀', details:['{PLAYER}深夜切完水果后忘了把刀收走，起身时不慎撞到桌边造成割伤，缝针后缺席训练'], minOut:1,maxOut:4,minDrop:1,maxDrop:1},
+  {type:'realWeirdInjury', weight:4, title:'奇葩受伤：鞋带较劲', details:['{PLAYER}赛前反复跺脚检查鞋带，动作过猛竟把自己脚踝扭了，球队只好临时取消热身'], minOut:3,maxOut:10,minDrop:1,maxDrop:2},
+  {type:'realWeirdInjury', weight:2, title:'奇葩受伤：冰袋敷成冻伤', details:['{PLAYER}赛后敷冰袋时睡着，醒来发现冰敷时间过长，膝部出现冻伤反应，需要医疗团队观察'], minOut:4,maxOut:12,minDrop:2,maxDrop:2},
+
+  // 更衣室与场边迷惑事件
+  {type:'realFun', weight:7, title:'更衣室趣事：偷穿队友球鞋', details:['{PLAYER}临时没有合适的个人球鞋，顺手偷穿队友的鞋，但忘了换掉定制鞋垫，刚走两步就被当场识破'], minOut:0,maxOut:0,minDrop:0,maxDrop:0},
+  {type:'realFun', weight:6, title:'更衣室趣事：差点被误认成球迷', details:['{PLAYER}参加球队庆祝活动时混在人群中太久，现场安保一度把他当成普通球迷，差点请他离开现场'], minOut:0,maxOut:0,minDrop:0,maxDrop:0},
+  {type:'realFun', weight:4, title:'更衣室趣事：和教练发生冲突', details:['{PLAYER}训练中情绪失控，与教练发生激烈争执，最终双方在更衣室里冷静下来，事情没有继续升级'], minOut:1,maxOut:3,minDrop:0,maxDrop:0},
+  {type:'realFun', weight:7, title:'更衣室趣事：新秀整蛊大会', details:['{PLAYER}把一名新秀的汽车藏到球队训练馆的奇怪位置，还顺手把篮球鞋塞进冰箱，第二天整个更衣室都在笑'], minOut:0,maxOut:0,minDrop:0,maxDrop:0},
+
+  // 惊险但不必然造成伤病
+  {type:'realDanger', weight:3, title:'惊险时刻：球馆外发生枪声', details:['{PLAYER}结束训练准备离开球馆时，附近突然传来枪声，球队立即锁馆并组织球员撤离，所幸无人受伤'], minOut:0,maxOut:1,minDrop:0,maxDrop:0},
+  {type:'realDanger', weight:3, title:'惊险时刻：夜店冲突', details:['{PLAYER}在私人聚会外卷入突发冲突，虽然受了几处轻伤，但及时脱身并接受了医疗检查'], minOut:1,maxOut:5,minDrop:1,maxDrop:1},
+  {type:'realDanger', weight:2, title:'惊险时刻：海边活动失控', details:['{PLAYER}参加海边体验活动时被水上项目突然拖向深水区，工作人员及时介入，球员最终安全返回岸上'], minOut:0,maxOut:2,minDrop:0,maxDrop:0},
+  {type:'realDanger', weight:2, title:'惊险时刻：新家遭雷击', details:['{PLAYER}刚搬进新公寓不久，深夜突然一道闪电击中楼顶附近，物业紧急疏散住户，球员有惊无险'], minOut:0,maxOut:1,minDrop:0,maxDrop:0},
+
+  // 改变生涯轨迹的严重意外（极低概率）
+  {type:'careerAccident', weight:1, title:'严重意外：危险驾驶事故', details:['{PLAYER}休赛期驾驶高性能摩托车时发生严重事故，造成腿部重伤，需要长期康复'], minOut:20,maxOut:45,minDrop:3,maxDrop:6, severe:true},
+  {type:'careerAccident', weight:1, title:'童年往事：扣篮恶作剧受伤', details:['{PLAYER}在一次翻看童年旧闻时提起，自己小时候模仿扣篮时被饰品勾住手指，留下了一段令人后怕的伤病故事；本赛季旧伤复发，需要休息'], minOut:3,maxOut:10,minDrop:1,maxDrop:2},
+
+  // 少量离奇正面事件：让现实奇闻库不只会“倒霉”
+  {type:'realPositive', weight:6, title:'离奇好运：飞机延误反而捡到训练窗口', details:['{PLAYER}原计划乘坐的航班临时延误，全队被迫留在酒店，结果利用空档完成了一次非常高效的恢复训练，状态明显提升'], minOut:0,maxOut:0,minDrop:0,maxDrop:0},
+  {type:'realPositive', weight:5, title:'离奇好运：迷路反而发现训练场', details:['{PLAYER}前往客场时意外走错路，却在附近发现一座设施极佳的小型训练馆，临时训练后状态火热'], minOut:0,maxOut:0,minDrop:0,maxDrop:0}
+];
+function weightedPick(items){
+  const total=items.reduce((s,x)=>s+x.weight,0); let r=Math.random()*total;
+  for(const x of items){r-=x.weight;if(r<=0)return x;} return items[items.length-1];
+}
+function getAllAIPlayers(){
+  const out=[];
+  ALL_TEAMS.forEach(team=>{
+    (STATE.teamRosters[team]||[]).forEach(p=>{if(!p.isUser)out.push({team,player:p});});
+  });
+  return out;
+}
+function activePlayerCount(team){
+  return (STATE.teamRosters[team]||[]).filter(p=>!p.isUser && (!p.injury||p.injury.gamesOut<=0)).length + (team===STATE.userTeam && STATE.userInjury.gamesOut<=0 ? 1:0);
+}
+function teamGameStrength(team){
+  const base=STATE.teamStrengths[team] || 75;
+  const roster=STATE.teamRosters[team]||[];
+  let penalty=0;
+  roster.forEach(p=>{
+    if(p.isUser) return;
+    if(p.injury && p.injury.gamesOut>0) penalty += Math.min(2.8, (Number(p.ovr)||70)*0.018);
+  });
+  if(team===STATE.userTeam && STATE.userInjury.gamesOut>0) penalty += Math.min(4.5, STATE.finalOVR*0.035);
+  return base-penalty;
+}
+function makeEventTarget(){
+  const all=getAllAIPlayers();
+  if(Math.random()<0.55){
+    return {isUser:true,team:STATE.userTeam,player:{name:STATE.playerName,ovr:STATE.finalOVR,age:STATE.age,isUser:true}};
+  }
+  if(!all.length) return {isUser:true,team:STATE.userTeam,player:{name:STATE.playerName,ovr:STATE.finalOVR,age:STATE.age,isUser:true}};
+  return pick(all);
+}
+function makeAIOnlyTarget(){ const all=getAllAIPlayers(); if(!all.length) return {isUser:true,team:STATE.userTeam,player:{name:STATE.playerName,ovr:STATE.finalOVR,age:STATE.age,isUser:true}}; return pick(all); }
+function prepareSeasonEventSchedule(){
+  // 每个赛季随机安排 6~9 场事件，超过5次且少于10次；发生场次完全随机且不重复。
+  const validCount = Array.isArray(STATE.seasonEventGames) && STATE.seasonEventGames.length>=6 && STATE.seasonEventGames.length<=9 && STATE.seasonEventGames.every(n=>n>=1&&n<=82);
+  if(!validCount){
+    const eventCount=rint(6,9);
+    STATE.seasonEventGames=shuffle(Array.from({length:82},(_,i)=>i+1)).slice(0,eventCount).sort((a,b)=>a-b);
+  }
+  if(typeof STATE.seasonEventsTriggered!=='number') STATE.seasonEventsTriggered=0;
+  if(typeof STATE.userInjuryEventsThisSeason!=='number') STATE.userInjuryEventsThisSeason=0;
+}
+function eventScheduledThisGame(){
+  prepareSeasonEventSchedule();
+  return STATE.seasonEventGames.includes(STATE.gamesPlayed) && STATE.seasonEventsTriggered<STATE.seasonEventGames.length;
+}
+function randomUserAttribute(){ return pick(ATTRS); }
+function applyPositiveEvent(target,event,display){
+  if(target.isUser){
+    const attr=randomUserAttribute();
+    const amount=event.type==='breakthrough' ? (Math.random()<0.82?2:3) : (Math.random()<0.88?1:2);
+    const before=Number(STATE.attrs[attr]||50);
+    const after=clamp(before+amount,1,99);
+    const actual=after-before;
+    STATE.attrs[attr]=after;
+    STATE.finalOVR=calcOVR(STATE.attrs);
+    display.impact=`${attr} +${actual}，OVR ${STATE.finalOVR}`;
+    ensureUserOnRoster(); rebuildTeamStrengths();
+  }else{
+    const attr=randomUserAttribute();
+    const amount=event.type==='breakthrough' ? (Math.random()<0.82?2:3) : 1;
+    target.player.ovr=clamp((Number(target.player.ovr)||70)+amount,1,99);
+    display.impact=`${target.player.name} OVR +${amount}（${attr}专项训练效果）`;
+    rebuildTeamStrengths();
+  }
+}
+function triggerRandomGameEvent(){
+  if(!eventScheduledThisGame()) return null;
+  const target=makeEventTarget();
+  if(!target) return null;
+  // 自建球员：降低受伤/负面事件权重，提高训练、突破、正面成长事件权重。
+  const USER_INJURY_EVENT_TYPES = new Set(['injury','realWeirdInjury','careerAccident','realDanger']);
+  const eventPool = target.isUser ? RANDOM_EVENT_TEMPLATES
+    .filter(e=>!(USER_INJURY_EVENT_TYPES.has(e.type) && Number(STATE.userInjuryEventsThisSeason||0)>=2))
+    .map(e=>{
+      let factor=1;
+      // 自建球员伤病事件整体低权重；并设置硬上限：每赛季最多2次真正的受伤/事故伤病事件。
+      if(USER_INJURY_EVENT_TYPES.has(e.type)) factor=0.22;
+      else if(e.type==='discipline') factor=0.7;
+      else if(e.type==='training') factor=2.2;
+      else if(e.type==='breakthrough') factor=3.0;
+      else if(e.type==='realPositive') factor=2.0;
+      else if(e.type==='userFun') factor=1.4;
+      return {...e, weight:e.weight*factor};
+    }) : RANDOM_EVENT_TEMPLATES;
+  const event=weightedPick(eventPool);
+  const detail=pick(event.details).replaceAll('{PLAYER}', target.player.name);
+  const display={type:event.type,title:event.title,detail,target:target.player.name,team:target.team,impact:'',out:0,drop:0,game:STATE.gamesPlayed,season:STATE.seasonYear};
+  if(event.type==='training' || event.type==='breakthrough') applyPositiveEvent(target,event,display);
+  else if(event.type==='fun') display.impact=target.isUser?'本次事件没有负面影响，反而成为全队热议话题':'没有比赛负面影响，成为球队本周最有趣的花絮';
+  else{
+    const out=rint(event.minOut,event.maxOut);
+    const drop=event.maxDrop>0 ? rint(event.minDrop,event.maxDrop) : 0;
+    display.out=out; display.drop=drop;
+    if(target.isUser){
+      if(USER_INJURY_EVENT_TYPES.has(event.type)) STATE.userInjuryEventsThisSeason=Number(STATE.userInjuryEventsThisSeason||0)+1;
+      STATE.userInjury={gamesOut:Math.max(STATE.userInjury.gamesOut||0,out),name:event.title,detail,ovrDrop:drop};
+      if(drop>0) STATE.finalOVR=clamp(STATE.finalOVR-drop,60,99);
+      display.impact=`${out>0?`休战 ${out} 场`:'无需休战'}${drop>0?`，OVR -${drop}`:''}`;
+      ensureUserOnRoster(); rebuildTeamStrengths();
+    }else{
+      const player=target.player;
+      if(out>0) player.injury={gamesOut:Math.max(player.injury?.gamesOut||0,out),name:event.title,detail,ovrDrop:drop};
+      if(drop>0) player.ovr=clamp((Number(player.ovr)||70)-drop,1,99);
+      display.impact=`${out>0?`休战 ${out} 场`:'无需休战'}${drop>0?`，OVR -${drop}`:''}`;
+      rebuildTeamStrengths();
+    }
+  }
+  STATE.seasonEventsTriggered++;
+  STATE.eventHistory.unshift(display);
+  if(STATE.eventHistory.length>100) STATE.eventHistory.length=100;
+  addNews(`${display.target}：${display.title}`,`${display.detail}。${display.impact}`,'突发事件');
+  return display;
+}
+function advanceInjuriesOneGame(){
+  if(STATE.userInjury.gamesOut>0) STATE.userInjury.gamesOut--;
+  ALL_TEAMS.forEach(team=>{
+    (STATE.teamRosters[team]||[]).forEach(p=>{
+      if(p.injury && p.injury.gamesOut>0){
+        p.injury.gamesOut--;
+        if(p.injury.gamesOut<=0) p.injury=null;
+      }
+    });
+  });
+}
+function currentUserAvailable(){return !STATE.userInjury || STATE.userInjury.gamesOut<=0;}
+
+/* =========================
+   核心模拟函数 (可单独调用)
+========================= */
+function _simulateOneGame() {
+  // 本场开打前，player.injury.gamesOut>0 即视为缺席；本场结束后再扣除一场。
+  const others = ALL_TEAMS.filter(t=>t!==STATE.userTeam);
+  const opp = pick(others);
+  const userAvailable=currentUserAvailable();
+  const user = userAvailable ? generateUserGameStats() : {pts:0,reb:0,ast:0,stl:0,blk:0};
+  const userStrength=teamGameStrength(STATE.userTeam);
+  const oppStrength=teamGameStrength(opp);
+  const oppScore = rand(90,118)+(oppStrength-80)*.52;
+  let teamScore = rand(92,116)+(userStrength-80)*.58+(userAvailable?user.pts*.15:0);
+  const win = teamScore >= oppScore;
+  STATE.gamesPlayed++;
+  if(userAvailable){
+    STATE.seasonStats.gp++;
+    ['pts','reb','ast','stl','blk'].forEach(k=>STATE.seasonStats[k]=+(STATE.seasonStats[k]+user[k]).toFixed(1));
+    STATE.careerStats.gp++;
+    STATE.careerStats.pts += user.pts;
+    STATE.careerStats.reb += user.reb;
+    STATE.careerStats.ast += user.ast;
+    STATE.careerStats.stl += user.stl;
+    STATE.careerStats.blk += user.blk;
+  }
+  // 先结算既有伤病的1场缺席，再生成本场的新事件；新伤病从下一场开始计时。
+  advanceInjuriesOneGame();
+  const event=triggerRandomGameEvent();
+  if(!STATE.gameLog)STATE.gameLog=[];
+  STATE.gameLog.unshift({game:STATE.gamesPlayed,opponent:opp,win,score:`${Math.round(teamScore)}-${Math.round(oppScore)}`,stats:user,userAvailable,event});
+  const grade = userAvailable ? clamp(Math.round(6+(user.pts+user.ast+user.reb)/10+(win?1.2:0)),6,10) : 0;
+  return {win,userStats:user,grade,score:`${Math.round(teamScore)}-${Math.round(oppScore)}`,opponent:opp,event,userAvailable};
+}
+
+/* =========================
+   渲染引擎
+========================= */
+function header(){
+ const el=document.getElementById('sub-header-info');
+ if(el) el.innerText=`${STATE.seasonYear}-${String(STATE.seasonYear+1).slice(2)}赛季 | ${STATE.age}岁 | 生涯第${STATE.careerSeason}年 | ${STATE.userTeam} | OVR ${STATE.finalOVR||'—'}`;
+}
+function render(){
+ header();
+ const map={create:renderCreate,build:renderBuild,reveal:renderReveal,teamSelect:renderTeamSelect,dashboard:renderDashboard,gameResult:renderGameResult,awards:renderAwards,standings:renderStandings,playin:renderPlayin,playoffs:renderPlayoffs,draft:renderDraft,freeAgency:renderFreeAgency,allocation:renderAllocation,offseason:renderOffseason,retired:renderRetired,roster:renderRoster,preseasonNews:renderPreseasonNews};
+ const badgeEl=document.getElementById('header-badge');
+ if(badgeEl) badgeEl.innerText={create:'创建球员',build:'属性抽签',reveal:'球员揭幕',teamSelect:'选择球队',dashboard:'生涯主页',gameResult:'比赛战报',awards:'赛季荣誉',standings:'东西部排名',playin:'附加赛',playoffs:'季后赛',draft:'选秀大会',freeAgency:'自由市场',allocation:'成长加点',offseason:'休赛期',retired:'退役结算',roster:'球队阵容',preseasonNews:'赛季前瞻新闻'}[STATE.step]||'游戏';
+ const mainEl=document.getElementById('main-content');
+ if(mainEl){
+   try{mainEl.innerHTML=(map[STATE.step]||renderCreate)();}catch(e){console.error(e);mainEl.innerHTML=`<div class="p-6 text-center"><h3 class="text-lg font-bold text-red-600">渲染异常</h3><p class="text-xs text-slate-500 mt-2">${e.message}</p><button onclick="STATE.step='dashboard';render();" class="mt-23 bg-orange-600 text-white px-4 py-2 rounded-xl text-xs font-bold">返回主页</button></div>`;}
+ }
+}
+
+/* ---- 页面渲染 ---- */
+function renderCreate(){
+ const ps=[['PG','组织后卫','掌控节奏、挡拆、传球'],['SG','得分后卫','投射、单打、无球跑位'],['SF','小前锋','全能锋线、攻防一体'],['PF','大前锋','篮板、内线、换防'],['C','中锋','护框、篮板、终结']];
+ return `<div class="space-y-4"><div class="text-center"><h2 class="text-xl font-black">创建你的NBA球星</h2><p class="text-xs text-slate-500 mt-1">基于真实NBA 2026-27赛季阵容 · 从22岁开启传奇</p></div>
+ <div class="p-4 rounded-2xl bg-blue-50 border border-blue-200"><div class="flex items-center gap-2"><span class="text-lg">📖</span><b class="text-sm text-blue-900">创建说明｜怎么玩？</b></div><div class="mt-3 space-y-2 text-xs text-slate-700 leading-5"><div><b>① 起个名字：</b>输入你想使用的球员姓名。</div><div><b>② 选择位置：</b>PG、SG、SF、PF、C 五个位置任选其一。</div><div><b>③ 属性抽签：</b>进入后会依次抽取各项能力，从历史巨星能力中选择你最满意的数值，组成你的自建球员属性。</div><div><b>④ 球员揭幕后：</b>选择一支NBA球队加盟，正式开始职业生涯。</div><div class="pt-1 text-blue-700"><b>💡 小提示：</b>能力属性会影响比赛表现与场均数据。</div></div></div>
+ <input id="nameInput" value="${STATE.playerName||'自建超巨'}" class="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold bg-slate-50" placeholder="球员姓名">
+ <div class="grid gap-2">${ps.map(x=>`<button onclick="STATE.position='${x[0]}';render()" class="text-left p-3 rounded-xl border ${STATE.position===x[0]?'border-orange-500 bg-orange-50 glow':'border-slate-200 bg-slate-50'}"><b>${x[1]} (${x[0]})</b><span class="text-xs text-slate-500 ml-2">${x[2]}</span></button>`).join('')}</div>
+ <button onclick="beginBuild()" class="w-full bg-gradient-to-r from-orange-600 to-red-600 text-white font-bold py-3.5 rounded-xl">开始新秀属性抽签 →</button></div>`;
+}
+function beginBuild(){
+ const n=document.getElementById('nameInput')?.value.trim();if(n)STATE.playerName=n;
+ STATE.step='build';STATE.currentAttrIndex=0;STATE.attrs={};STATE.draftHistory=[];STATE.rerollsLeft=3;STATE.seasonEventGames=[];STATE.seasonEventsTriggered=0;STATE.userInjuryEventsThisSeason=0;render();
+}
+function renderBuild(){
+ const key=ATTRS[STATE.currentAttrIndex];
+ const candidates=shuffle(HISTORICAL_STARS).slice(0,6);
+ return `<div><div class="mb-4"><h2 class="font-black text-lg">新秀属性抽签：<span class="text-orange-600">${key}</span></h2><p class="text-xs text-slate-500 mt-1">从历史巨星新秀能力中选择</p></div>
+ <div class="space-y-2">${candidates.map((s,i)=>`<div class="flex justify-between items-center p-3 rounded-xl border border-slate-200 bg-slate-50"><div><b class="text-sm">${s.name}</b><div class="text-xs text-orange-600 mt-1">${key}：<b>${s.attrs[key]}</b></div></div><button onclick='pickAttr(${JSON.stringify(s)})' class="bg-orange-600 text-white text-xs font-bold px-4 py-2 rounded-lg">锁定</button></div>`).join('')}</div>
+ <button onclick="reroll()" class="w-full mt-3 py-2.5 rounded-xl bg-slate-200 text-xs font-semibold">🔄 换一批候选（剩余 ${STATE.rerollsLeft} 次）</button></div>`;
+}
+function pickAttr(star){
+ const key=ATTRS[STATE.currentAttrIndex];STATE.attrs[key]=star.attrs[key];STATE.currentAttrIndex++;
+ if(STATE.currentAttrIndex>=ATTRS.length){STATE.finalOVR=calcOVR(STATE.attrs);ensureUserOnRoster();rebuildTeamStrengths();STATE.step='reveal'}render();
+}
+function reroll(){if(STATE.rerollsLeft>0){STATE.rerollsLeft--;render()}else alert('没有刷新次数了。')}
+function renderReveal(){
+ return `<div class="text-center py-8"><div class="text-7xl font-black text-orange-600">${STATE.finalOVR}</div><div class="uppercase tracking-widest text-xs text-slate-500 mt-2">${STATE.playerName} · ${posText(STATE.position)} · OVR</div>
+ <div class="grid grid-cols-4 gap-2 mt-6">${ATTRS.map(k=>`<div class="stat-box"><div class="text-[10px] text-slate-500">${k}</div><b class="text-sm">${STATE.attrs[k]}</b></div>`).join('')}</div>
+ <div class="mt-6 p-4 rounded-xl bg-orange-50 border border-orange-200 text-sm">基于真实NBA 2026-27赛季阵容，挑选你的球队。</div>
+ <button onclick="STATE.step='teamSelect';render()" class="w-full mt-6 bg-orange-600 text-white font-bold py-3 rounded-xl">🏀 选择加盟球队 →</button></div>`;
+}
+function renderTeamSelect(){
+ const rows=(list,conf,color)=>list.map(t=>{
+   const roster=STATE.teamRosters[t]||[];
+   const topPlayer=[...roster].filter(p=>!p.isUser).sort((a,b)=>b.ovr-a.ovr)[0];
+   const strength=STATE.teamStrengths[t]||BASE[t];
+   return `<button onclick="chooseTeam('${t}')" class="w-full text-left p-3 rounded-xl border border-slate-200 bg-slate-50 hover:border-orange-400 hover:bg-orange-50 flex justify-between items-center">
+    <div><b class="text-sm">${t}</b><div class="text-[11px] text-slate-500 mt-0.5">${topPlayer?`核心：${topPlayer.name}（OVR ${topPlayer.ovr}）`:''}</div></div>
+    <div class="text-right"><div class="text-[10px] text-slate-500">实力评分</div><b class="${color}">${strength}</b></div>
+   </button>`;
+ }).join('');
+ return `<div><div class="text-center mb-4"><h2 class="text-xl font-black">🏀 选择你的加盟球队</h2><p class="text-xs text-slate-500 mt-1">${STATE.playerName} · ${posText(STATE.position)} · OVR ${STATE.finalOVR}</p></div>
+ <div class="grid md:grid-cols-2 gap-3"><div><div class="text-xs font-bold text-orange-600 mb-2 px-1">东部联盟</div><div class="space-y-2 max-h-[55vh] overflow-y-auto pr-1">${rows(EAST,'East','text-orange-600')}</div></div>
+ <div><div class="text-xs font-bold text-blue-600 mb-2 px-1">西部联盟</div><div class="space-y-2 max-h-[55vh] overflow-y-auto pr-1">${rows(WEST,'West','text-blue-600')}</div></div></div></div>`;
+}
+function chooseTeam(team){
+ STATE.userTeam=team;STATE.contractYearsLeft=4;
+ ensureUserOnRoster();rebuildTeamStrengths();
+ addNews(`欢迎加盟！`,`${STATE.playerName} 正式签约 ${team}，开启职业生涯。`,'签约');
+ STATE.step='dashboard';STATE.seasonPhase='regular';render();
+}
+function avg(k){const gp=Number(STATE.seasonStats?.gp||0);return +(gp?STATE.seasonStats[k]/gp:0).toFixed(1)}
+
+/* ----- 胜负块渲染函数 ----- */
+function renderGameBlocks() {
+  if (!STATE.gameLog || STATE.gameLog.length === 0) return '<span class="text-xs text-slate-400">暂无比赛记录</span>';
+  const reversed = [...STATE.gameLog].reverse();
+  let html = '';
+  for (let i=0; i<reversed.length; i++) {
+    const g = reversed[i];
+    const color = g.win ? 'bg-emerald-500' : 'bg-red-500';
+    html += `<div class="w-3 h-3 rounded-sm ${color} border border-slate-300" title="第${i+1}场 ${g.win?'胜':'负'} ${g.score}"></div>`;
+  }
+  const total = STATE.gamesPlayed || 0;
+  for (let i=total; i<82; i++) {
+    html += `<div class="w-3 h-3 rounded-sm bg-slate-200 border border-slate-300" title="未进行"></div>`;
+  }
+  return html;
+}
+
+function renderEventFeed(){
+ const events=(STATE.eventHistory||[]).filter(e=>e.season===STATE.seasonYear).slice(0,5);
+ if(!events.length) return `<div class="p-4 rounded-xl border border-indigo-200 bg-indigo-50/50"><div><b class="text-sm text-indigo-700">📰 事件播报</b></div><div class="text-xs text-slate-500 mt-2">本赛季暂时没有突发事件。</div></div>`;
+ const rows=events.map(e=>`<div class="p-3 rounded-lg bg-white border border-indigo-100 mb-2"><div class="flex justify-between gap-2"><span class="text-xs font-black text-indigo-700">${e.target} · ${e.title}</span><span class="text-[10px] text-slate-400">第${e.game}场</span></div><div class="text-xs text-slate-600 mt-1">${e.detail}</div><div class="text-xs font-bold text-indigo-600 mt-1">${e.impact}</div></div>`).join('');
+ return `<div class="p-4 rounded-xl border border-indigo-200 bg-indigo-50/50"><div class="mb-2"><b class="text-sm text-indigo-700">📰 事件播报</b></div><div class="max-h-56 overflow-y-auto">${rows}</div></div>`;
+}
+
+function renderDashboard(){
+ const winCount = (STATE.gameLog||[]).filter(g=>g.win).length;
+ return `<div class="space-y-4"><div class="grid grid-cols-2 gap-2">
+ <div class="p-4 bg-slate-50 rounded-xl border"><div class="text-xs text-slate-500">我的球员</div><div class="font-black text-lg">${STATE.playerName}</div><div class="text-xs text-orange-600">${posText(STATE.position)} · OVR ${STATE.finalOVR}</div>${!currentUserAvailable()?`<div class="text-xs text-red-600 mt-1 font-bold">🚑 ${STATE.userInjury.name}：还需休息 ${STATE.userInjury.gamesOut} 场</div>`:''}</div>
+ <div class="p-4 bg-slate-50 rounded-xl border"><div class="text-xs text-slate-500">球队</div><div class="font-black text-lg">${STATE.userTeam}</div><div class="text-xs text-emerald-600">合同剩余 ${STATE.contractYearsLeft} 年</div></div></div>
+ <div class="text-xs font-bold text-slate-500 px-1">📊 赛季场均 (${STATE.seasonStats.gp||0}场${STATE.gamesPlayed!==STATE.seasonStats.gp?` · 球队${STATE.gamesPlayed}场`:''})</div>
+ <div class="grid grid-cols-5 gap-1.5">${[['得分',avg('pts')],['篮板',avg('reb')],['助攻',avg('ast')],['抢断',avg('stl')],['盖帽',avg('blk')]].map(x=>`<div class="stat-box"><div class="text-[10px] text-slate-500">${x[0]}</div><b class="text-xs">${x[1]}</b></div>`).join('')}</div>
+ 
+ <div class="p-4 rounded-xl bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200">
+  <div class="font-bold text-sm mb-2">📅 ${STATE.seasonYear}赛季进度</div>
+  <div class="text-xs text-slate-600 mb-3">已进行 ${STATE.gamesPlayed}/82 场 (${winCount}胜${STATE.gamesPlayed-winCount}负)</div>
+  <div class="w-full h-2 bg-white rounded-full overflow-hidden"><div class="h-full bg-orange-500" style="width:${STATE.gamesPlayed/82*100}%"></div></div>
+ </div>
+ <!-- 胜负块区域 -->
+ <div>
+  <div class="flex justify-between items-center mb-1">
+    <span class="text-xs font-bold text-slate-500">📊 比赛胜负记录</span>
+    ${STATE.gamesPlayed < 82 ? `<button onclick="simulateRemainingGames()" class="bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold px-3 py-1 rounded-full">⚡ 模拟剩余 ${82-STATE.gamesPlayed} 场</button>` : ''}
+  </div>
+  <div class="flex flex-wrap gap-1 mt-1 max-h-24 overflow-y-auto p-1 border border-slate-200 rounded-xl bg-slate-50/60">
+    ${renderGameBlocks()}
+  </div>
+ </div>
+ <div class="space-y-2"><button onclick="playNextGame()" class="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-3.5 rounded-xl">${STATE.gamesPlayed<82?'🏀 进行下一场比赛':'✅ 常规赛已结束，查看荣誉'}</button><button onclick="showRoster()" class="w-full bg-slate-100 border border-slate-200 font-semibold py-3 rounded-xl">👥 查看球队阵容</button></div>
+ ${renderEventFeed()}
+ <div class="p-3 rounded-xl border border-slate-200"><b class="text-sm">🏆 生涯履历</b><div class="grid grid-cols-3 sm:grid-cols-6 gap-2 mt-2 text-xs"><span>总冠军 ${STATE.careerStats.rings}</span><span>MVP ${STATE.careerStats.mvps}</span><span>FMVP ${STATE.careerStats.finalsMvps}</span><span>最佳阵容 ${STATE.careerStats.allNba}</span><span>防守阵容 ${STATE.careerStats.allDef||0}</span><span>最佳新秀 ${STATE.careerStats.roys}</span></div></div></div>`;
+}
+
+function showRoster(){STATE.step='roster';render();}
+function renderRoster(){
+ const r=STATE.teamRosters[STATE.userTeam]||[];
+ const listHTML=r.sort((a,b)=>b.ovr-a.ovr).map((p,i)=>
+   `<div class="flex justify-between items-center p-3 border-b border-slate-200 ${p.injury&&p.injury.gamesOut>0?'bg-red-50 border-red-200':'bg-slate-50'} rounded-xl mb-2"><span class="text-sm"><b>${i+1}. ${p.name}</b> <span class="text-xs text-slate-500 bg-white border px-1.5 py-0.5 rounded ml-1">${p.pos}</span> ${p.isUser?'⭐':''}${p.injury&&p.injury.gamesOut>0?` <span class="text-xs text-red-600 font-bold ml-1">🚑 休战${p.injury.gamesOut}场</span>`:''}</span><b class="text-orange-600 text-sm">OVR ${p.ovr}</b></div>`
+ ).join('');
+ return `<div class="space-y-4"><div class="text-center"><h2 class="text-xl font-black">👥 ${STATE.userTeam} 阵容</h2><p class="text-xs text-slate-500">基于真实NBA 2026-27赛季名单</p></div><div class="max-h-[55vh] overflow-y-auto pr-1">${listHTML}</div><button onclick="goDashboard()" class="w-full bg-slate-100 border border-slate-200 font-bold py-3.5 rounded-xl">返回生涯主页</button></div>`;
+}
+function goDashboard(){STATE.step='dashboard';render();}
+
+/* ---- 比赛 ---- */
+function playNextGame() {
+  if (STATE.gamesPlayed >= 82) { finishRegularSeason(); return; }
+  const result = _simulateOneGame();
+  STATE.currentGame = {win:result.win, userStats:result.userStats, grade:result.grade, score:result.score, event:result.event, userAvailable:result.userAvailable};
+  STATE.currentOpponent = result.opponent;
+  // 单场比赛遇到赛季预设事件时直接停在战报页。
+  STATE.step = 'gameResult';
+  render();
+}
+function simulateRemainingGames() {
+  if (STATE.gamesPlayed >= 82) return;
+  const remaining = 82 - STATE.gamesPlayed;
+  // 模拟剩余比赛时，一旦触发事件立即停止，直接展示本场战报。
+  for (let i=0; i<remaining; i++) {
+    const r=_simulateOneGame();
+    if(r.event){
+      STATE.currentGame = {win:r.win, userStats:r.userStats, grade:r.grade, score:r.score, event:r.event, userAvailable:r.userAvailable};
+      STATE.currentOpponent = r.opponent;
+      STATE.step='gameResult';
+      render();
+      return;
+    }
+  }
+  STATE.currentGame = null;
+  STATE.step = 'dashboard';
+  render();
+}
+
+function renderGameResult(){
+ const win=STATE.currentGame.win;const s=STATE.currentGame.userStats;const grade=STATE.currentGame.grade;const score=STATE.currentGame.score;const opp=STATE.currentOpponent;
+ return `<div class="text-center py-6"><div class="text-xs text-slate-500">第 ${STATE.gamesPlayed} 场常规赛</div><h2 class="text-3xl font-black mt-2 ${win?'text-emerald-600':'text-red-600'}">${win?'🏆 胜利！':'❌ 失利'}</h2><div class="text-xl font-black mt-1 text-slate-700">${score}</div><div class="text-xs text-slate-500 mt-1">对手：${opp}</div>
+ <div class="mt-4 text-xs font-bold text-slate-500">本场数据</div><div class="grid grid-cols-5 gap-1.5 mt-2">${[['得分',s.pts],['篮板',s.reb],['助攻',s.ast],['抢断',s.stl],['盖帽',s.blk]].map(x=>`<div class="stat-box"><div class="text-[10px] text-slate-500">${x[0]}</div><b class="text-sm">${x[1]}</b></div>`).join('')}</div>
+ <div class="mt-4 p-4 rounded-xl bg-orange-50 border border-orange-200 text-sm">${STATE.currentGame.userAvailable?`评分：<b class="text-orange-600">${grade.toFixed(1)}分</b>`:`🚑 你本场因伤病休战，未计入个人出场数据`}</div>${STATE.currentGame.event?`<div class="mt-3 p-4 rounded-xl bg-indigo-50 border border-indigo-200 text-left"><div class="font-black text-sm text-indigo-700">📰 突发事件：${STATE.currentGame.event.title}</div><div class="text-xs mt-1">${STATE.currentGame.event.target} · ${STATE.currentGame.event.detail}</div><div class="text-xs text-indigo-600 font-bold mt-1">${STATE.currentGame.event.impact}</div></div>`:''}
+ <button onclick="${STATE.gamesPlayed>=82?'finishRegularSeason()':'goDashboard()'}" class="w-full mt-23 bg-orange-600 text-white font-bold py-3.5 rounded-xl">${STATE.gamesPlayed>=82?'进入赛季结算':'返回生涯主页'}</button></div>`;
+}
+
+/* ---- 赛季结算 (修正胜场归一化) ---- */
+function finishRegularSeason(){runAITrades();simulateStandings();createAwards();STATE.step='awards';render();}
+function runAITrades(){
+ ensureUserOnRoster();rebuildTeamStrengths();STATE.tradeHistory=[];
+ const count=rint(5,9), used=new Set();
+ for(let n=0;n<count;n++){
+   let tries=0,done=false;
+   while(tries++<60&&!done){
+     const a=pick(ALL_TEAMS),b=pick(ALL_TEAMS); if(a===b||used.has(a+'|'+b)||used.has(b+'|'+a))continue;
+     if(a===STATE.userTeam||b===STATE.userTeam){if(Math.random()<.75)continue;}
+     const ra=(STATE.teamRosters[a]||[]).filter(p=>!p.isUser),rb=(STATE.teamRosters[b]||[]).filter(p=>!p.isUser);
+     if(ra.length<7||rb.length<7)continue;
+     const pa=pick(ra), pb=pick(rb);
+     if(Math.abs(pa.ovr-pb.ovr)>8&&Math.random()<.75)continue;
+     const ia=STATE.teamRosters[a].findIndex(p=>p.id===pa.id), ib=STATE.teamRosters[b].findIndex(p=>p.id===pb.id);
+     if(ia<0||ib<0)continue;
+     STATE.teamRosters[a][ia]=pb;STATE.teamRosters[b][ib]=pa;used.add(a+'|'+b);done=true;
+   }
+ }
+ rebuildTeamStrengths();
+}
+function runPreseasonMarketSimulation(){
+  STATE.tradeHistory=[];
+  normalizeRosters();
+
+  // AI休赛期签约/转会：必须真正修改 teamRosters，而不能只生成新闻。
+  // 每次交易都先从原球队删除球员，再加入新球队，保证一名球员只存在于一个球队。
+  const count=rint(3,5), usedPlayers=new Set(), usedPairs=new Set();
+  for(let n=0;n<count;n++){
+    let tries=0,done=false;
+    while(tries++<80&&!done){
+      const from=pick(ALL_TEAMS);
+      const to=pick(ALL_TEAMS);
+      if(from===to) continue;
+      const pair=from+'|'+to;
+      if(usedPairs.has(pair)||usedPairs.has(to+'|'+from)) continue;
+
+      const source=STATE.teamRosters[from]||[];
+      // 优先挑选真实球员，避免重复制造同名球员。
+      const candidates=source.filter(p=>!p.isUser && !usedPlayers.has(p.id));
+      if(!candidates.length) continue;
+
+      // 强队核心也可能转会，但整体以高质量轮换为主。
+      const sorted=[...candidates].sort((a,b)=>b.ovr-a.ovr);
+      const topPool=sorted.slice(0,Math.min(5,sorted.length));
+      const player=pick(topPool);
+      const oldIndex=source.findIndex(p=>p.id===player.id);
+      if(oldIndex<0) continue;
+
+      if(!Array.isArray(STATE.teamRosters[to])) STATE.teamRosters[to]=[];
+      // 当前游戏每队初始10人；限制到15人，避免无限堆积。
+      if(STATE.teamRosters[to].length>=15) continue;
+
+      // 正式执行转会：原队移除 + 新队加入。
+      const moved={...player, role:'主要轮换'};
+      STATE.teamRosters[from].splice(oldIndex,1);
+      STATE.teamRosters[to].push(moved);
+
+      const salary=moved.salary||Math.round(moved.ovr*.45);
+      const years=rint(2,4);
+      STATE.tradeHistory.push({
+        type:'签约',
+        title:`${to} 宣布重磅签约`,
+        desc:`${moved.name}（OVR ${moved.ovr}）离开 ${from}，正式加盟 ${to}，签下${years}年${salary}百万合同。`,
+        from,to,
+        sent:{name:moved.name,pos:moved.pos,ovr:moved.ovr},
+        received:{name:'合同',pos:'',ovr:salary},
+        gradeA:'A',gradeB:'A'
+      });
+      usedPlayers.add(moved.id);
+      usedPairs.add(pair);
+      done=true;
+    }
+  }
+
+  // 再做一次全联盟阵容整理，防止历史存档残留重复球员。
+  normalizeRosters();
+  rebuildTeamStrengths();
+}
+function simulateStandings(){
+  const userWins = (STATE.gameLog||[]).filter(g=>g.win).length;
+  const wins = {};
+
+  // 核心算法：球队实力决定预期胜率，随机波动只做小幅修正。
+  // 使用 Logistic 曲线，让实力差距在高水平区间也能明显反映到胜场。
+  const nonUserTeams = ALL_TEAMS.filter(t=>t!==STATE.userTeam);
+  const strengthList = ALL_TEAMS.map(t=>STATE.teamStrengths[t] || BASE[t] || 78);
+  const leagueMean = strengthList.reduce((a,b)=>a+b,0) / strengthList.length;
+
+  const strengthToWins = (strength) => {
+    const pct = 1 / (1 + Math.exp(-(strength - leagueMean) / 3.6));
+    return 82 * pct;
+  };
+
+  // 先生成连续的“实力预期胜场”。越接近联盟平均实力，越接近 41 胜。
+  const expected = {};
+  ALL_TEAMS.forEach(t=>{
+    const strength = STATE.teamStrengths[t] || BASE[t] || 78;
+    expected[t] = strengthToWins(strength);
+  });
+
+  // 用户球队的真实胜负记录优先使用实际比赛结果。
+  wins[STATE.userTeam] = clamp(userWins, 0, 82);
+
+  // 其余球队加入少量赛季随机性（约±3胜），而不是之前的±4后再整体缩放。
+  nonUserTeams.forEach(t=>{
+    const strength = STATE.teamStrengths[t] || BASE[t] || 78;
+    const expectedWins = expected[t];
+    let w = Math.round(expectedWins + rand(-2.8, 2.8));
+
+    // 强队保留明显优势，但避免极端到不合理。
+    if(strength >= leagueMean + 7) w += rint(0,2);
+    if(strength <= leagueMean - 7) w -= rint(0,2);
+    wins[t] = clamp(w, 15, 67);
+  });
+
+  // NBA 30 队完整赛季总胜场必须为 1230。
+  // 这里只做“加减胜场”校正，不再乘比例，因此球队间原本的强弱排序不会被压扁。
+  const targetNonUser = 1230 - wins[STATE.userTeam];
+  let diff = targetNonUser - nonUserTeams.reduce((sum,t)=>sum+wins[t],0);
+
+  // 优先给预期胜场更高的球队加胜场，优先从预期胜场更低的球队减胜场，
+  // 这样总量修正仍然尽量符合实力逻辑。
+  const addOrder = [...nonUserTeams].sort((a,b)=>expected[b]-expected[a]);
+  const removeOrder = [...nonUserTeams].sort((a,b)=>expected[a]-expected[b]);
+  let safety = 0;
+  while(diff !== 0 && safety++ < 5000){
+    const order = diff > 0 ? addOrder : removeOrder;
+    let changed = false;
+    for(const t of order){
+      if(diff === 0) break;
+      if(diff > 0 && wins[t] < 67){ wins[t]++; diff--; changed=true; }
+      else if(diff < 0 && wins[t] > 15){ wins[t]--; diff++; changed=true; }
+    }
+    if(!changed) break;
+  }
+
+  const make = (list, conf) => list.map(t=>({
+    name: t,
+    strength: STATE.teamStrengths[t] || BASE[t],
+    wins: wins[t],
+    losses: 82-wins[t],
+    expectedWins: +expected[t].toFixed(1),
+    conference: conf
+  })).sort((a,b)=>b.wins-a.wins || b.strength-a.strength);
+
+  STATE.standing = {
+    east: make(EAST, 'East'),
+    west: make(WEST, 'West')
+  };
+  runPlayIn();
+}
+function runPlayIn(){
+ const res={east:null,west:null};
+ ['east','west'].forEach(k=>{
+   const arr=STATE.standing[k];const a=arr[6],b=arr[7],c=arr[8],d=arr[9];
+   const g1=oneGame(a,b),g2=oneGame(c,d),g3=oneGame(g1.loser,g2.winner);
+   res[k]={seed7Winner:g1.winner,seed8Winner:g3.winner,logs:[`7号 vs 8号：${g1.winner.name} 获胜，锁定7号种子。`,`9号 vs 10号：${g2.winner.name} 获胜。`,`最终8号争夺：${g3.winner.name} 获得8号种子。`]};
+ });
+ STATE.playin=res;
+}
+function oneGame(a,b){const pa=clamp(.5+(a.strength-b.strength)*.025,.2,.8);const wa=Math.random()<pa;return {winner:wa?a:b,loser:wa?b:a};}
+function createPlayerCandidate(team){
+ const lead=(STATE.teamRosters[team]||[]).filter(p=>!p.isUser).sort((a,b)=>b.ovr-a.ovr);
+ return lead[0]||{name:getRealisticName(),pos:'SF',ovr:82,age:28};
+}
+function generateOriginalRookieName(used=new Set()){
+  const first=['陆','沈','顾','程','苏','江','林','谢','秦','许','周','韩','唐','温','季','裴','萧','楚','纪','贺','闻','乔','孟','盛','祁','黎','简','宁','尹','姜'];
+  const middle=['曜','景','泽','昊','承','星','凌','宇','川','辰','霄','翊','衡','宸','卓','骁','远','珩','琛','峻','奕','谨','沐','修','墨','航','翎','屹','朗','钧'];
+  let name=''; let guard=0;
+  while(!name || used.has(name) || NBA_STARS.includes(name) || ALL_TEAMS.some(t=>(STATE.teamRosters[t]||[]).some(p=>p.name===name))){
+    name=pick(first)+pick(middle)+(Math.random()<0.72?pick(middle):'');
+    if(++guard>100) name='新秀'+Date.now()+rint(10,99);
+  }
+  used.add(name); return name;
+}
+function generateOriginalRookieClass(count=10){
+  const used=new Set(); const out=[]; const pos=['PG','SG','SF','PF','C'];
+  for(let i=0;i<count;i++) out.push({name:generateOriginalRookieName(used),pos:pos[i%5],ovr:rint(72,84)});
+  return out;
+}
+function createAwards(){
+ const user={name:STATE.playerName,pos:STATE.position,pts:avg('pts'),reb:avg('reb'),ast:avg('ast'),stl:avg('stl'),blk:avg('blk'),ovr:STATE.finalOVR};
+ const pool=shuffle(ALL_TEAMS).slice(0,22).map(createPlayerCandidate).map(p=>fakeSeasonLine(p));
+ pool.push(user);
+ const score=p=>p.pts+p.reb+p.ast+p.stl+p.blk;
+ const mvp=[...pool].sort((a,b)=>score(b)-score(a))[0];
+ const dpoy=[...pool].sort((a,b)=>b.stl+b.blk-a.stl-a.blk)[0];
+
+ // 最佳新秀阵容严格使用“本赛季开始前的上一届选秀”新秀，不再随机补人。
+ // currentRookies 在上一届选秀完成后写入，本赛季结束时只从这一届新秀中评选。
+ let rookPool=(STATE.currentRookies||[]).map(x=>({
+   name:x.name, pos:x.pos||'SF', ovr:x.ovr||75,
+   pts:x.pts, reb:x.reb, ast:x.ast, stl:x.stl, blk:x.blk
+ }));
+ if(rookPool.length===0){
+   // 首个生涯赛季使用系统原创的新秀池，不使用现实球员姓名。
+   rookPool=generateOriginalRookieClass(10).map(x=>({...x}));
+ }
+ // 自建球员第一赛季自动加入最佳新秀一阵。
+ if(STATE.careerSeason===1){
+   const userRookie={name:STATE.playerName,pos:STATE.position,ovr:STATE.finalOVR,pts:avg('pts'),reb:avg('reb'),ast:avg('ast'),stl:avg('stl'),blk:avg('blk'),isUser:true};
+   rookPool=rookPool.filter(p=>p.name!==STATE.playerName);
+   rookPool.unshift(userRookie);
+ }
+ rookPool=rookPool.map(p=>({
+   ...p,
+   pts:p.pts??+(12+(p.ovr-70)*.45+rand(-2,2)).toFixed(1),
+   reb:p.reb??+rand(3,10).toFixed(1),
+   ast:p.ast??+rand(2,8).toFixed(1),
+   stl:p.stl??+rand(.7,2).toFixed(1),
+   blk:p.blk??+rand(.2,2.5).toFixed(1)
+ }));
+ rookPool.sort((a,b)=>(b.pts+b.reb+b.ast+b.stl+b.blk)-(a.pts+a.reb+a.ast+a.stl+a.blk));
+ if(STATE.careerSeason===1){
+   const ui=rookPool.findIndex(p=>p.name===STATE.playerName);
+   if(ui>4) rookPool.splice(4,0,rookPool.splice(ui,1)[0]);
+ }
+ const allNba=[...pool].sort((a,b)=>score(b)-score(a));
+ const allDef=[...pool].sort((a,b)=>(b.stl+b.blk)-(a.stl+a.blk));
+ if(mvp.name===STATE.playerName)STATE.careerStats.mvps++;if(dpoy.name===STATE.playerName)STATE.careerStats.dpoys++;if(rookPool[0]?.name===STATE.playerName)STATE.careerStats.roys++;
+ STATE.careerStats.allNba += allNba.slice(0,15).some(p=>p.name===STATE.playerName)?1:0;
+  STATE.careerStats.allDef += allDef.slice(0,10).some(p=>p.name===STATE.playerName)?1:0;
+ STATE.awards={mvp,dpoy,roy:rookPool[0]?.name||'—',allNba1:allNba.slice(0,5).map(p=>p.name),allNba2:allNba.slice(5,10).map(p=>p.name),allNba3:allNba.slice(10,15).map(p=>p.name),allDef1:allDef.slice(0,5).map(p=>p.name),allDef2:allDef.slice(5,10).map(p=>p.name),rook1:rookPool.slice(0,5).map(x=>x.name),rook2:rookPool.slice(5,10).map(x=>x.name),rookDraftYear:STATE.rookieDraftYear};
+}
+function fakeSeasonLine(p){return {...p,pts:+(12+(p.ovr-70)*.45+rand(-2,2)).toFixed(1),reb:+rand(3,10).toFixed(1),ast:+rand(2,8).toFixed(1),stl:+rand(.7,2).toFixed(1),blk:+rand(.2,2.5).toFixed(1)};}
+
+function renderAwards(){
+ const a=STATE.awards;
+ return `<div><div class="text-center mb-4"><h2 class="text-xl font-black">📊 ${STATE.seasonYear}-${String(STATE.seasonYear+1).slice(2)} 赛季结算</h2><p class="text-xs text-slate-500 mt-1">场均：${avg('pts')}分 · ${avg('reb')}板 · ${avg('ast')}助</p><p class="text-[11px] text-indigo-600 mt-1">最佳新秀阵容：${a.rookDraftYear||STATE.rookieDraftYear||'上一届'}选秀新秀</p></div>
+ <div class="grid grid-cols-5 gap-1.5 mb-4">${[['得分',avg('pts')],['篮板',avg('reb')],['助攻',avg('ast')],['抢断',avg('stl')],['盖帽',avg('blk')]].map(x=>`<div class="stat-box"><div class="text-[10px] text-slate-500">${x[0]}</div><b>${x[1]}</b></div>`).join('')}</div>
+ <div class="space-y-2 p-4 rounded-xl border border-slate-200 bg-slate-50 text-xs">
+ <div class="flex justify-between"><b>MVP</b><span>${a.mvp.name} · ${a.mvp.pts}/${a.mvp.reb}/${a.mvp.ast}</span></div>
+ <div class="flex justify-between"><b>DPOY</b><span>${a.dpoy.name} · ${a.dpoy.stl}断/${a.dpoy.blk}帽</span></div>
+ <div class="flex justify-between"><b>最佳新秀</b><span>${a.roy}</span></div>
+ <div><b>一阵：</b>${a.allNba1.join('、')}</div><div><b>二阵：</b>${a.allNba2.join('、')}</div><div><b>三阵：</b>${a.allNba3.join('、')}</div>
+ <div><b>防一阵：</b>${a.allDef1.join('、')}</div><div><b>防二阵：</b>${a.allDef2.join('、')}</div>
+ <div><b>新秀一阵：</b>${a.rook1.join('、')}</div><div><b>新秀二阵：</b>${a.rook2.join('、')}</div>
+ </div><button onclick="STATE.step='standings';render()" class="w-full mt-4 bg-orange-600 text-white font-bold py-3 rounded-xl">📈 查看排名</button></div>`;
+}
+function renderStandings(){
+ const col=(arr,color)=>arr.map((t,i)=>`<div class="flex justify-between text-[11px] py-1 border-b border-slate-100"><span class="${t.name===STATE.userTeam?'text-orange-600 font-black':i<6?'text-emerald-600 font-bold':i<10?'text-amber-600 font-semibold':''}">${i+1}. ${t.name}${t.name===STATE.userTeam?'（你）':''}</span><span><b>${t.wins}胜</b> ${t.losses??(82-t.wins)}负 · 实力 ${t.strength}</span></div>`).join('');
+ return `<div><h2 class="text-center text-xl font-black mb-3">📈 东西部排名</h2><div class="grid grid-cols-2 gap-2"><div class="p-3 bg-slate-50 rounded-xl border"><b class="text-orange-600 text-sm">东部</b>${col(STATE.standing.east)}</div><div class="p-3 bg-slate-50 rounded-xl border"><b class="text-blue-600 text-sm">西部</b>${col(STATE.standing.west)}</div></div><button onclick="STATE.step='playin';render()" class="w-full mt-4 bg-red-600 text-white font-bold py-3 rounded-xl">⚔️ 附加赛</button></div>`;
+}
+function renderPlayin(){
+ const l=(x)=>x.logs.map(s=>`<div class="text-xs py-1">🔹 ${s}</div>`).join('');
+ return `<div><h2 class="text-center text-xl font-black mb-4">⚔️ Play-In</h2><div class="space-y-3"><div class="p-4 bg-slate-50 rounded-xl border"><b class="text-orange-600">东部</b>${l(STATE.playin.east)}</div><div class="p-4 bg-slate-50 rounded-xl border"><b class="text-blue-600">西部</b>${l(STATE.playin.west)}</div></div><button onclick="simulatePlayoffs()" class="w-full mt-4 bg-red-600 text-white font-bold py-3 rounded-xl">👑 季后赛</button></div>`;
+}
+function series(a,b){const pa=clamp(.5+(a.strength-b.strength)*.022+(a.name===STATE.userTeam?(STATE.finalOVR-80)*.006:0),.18,.82);let wa=0,wb=0;while(wa<4&&wb<4){if(Math.random()<pa)wa++;else wb++}return {a,b,winner:wa===4?a:b,score:`${wa}:${wb}`};}
+function conferencePlayoffs(arr){const r1=[series(arr[0],arr[7]),series(arr[3],arr[4]),series(arr[1],arr[6]),series(arr[2],arr[5])];const s1=series(r1[0].winner,r1[1].winner),s2=series(r1[2].winner,r1[3].winner),cf=series(s1.winner,s2.winner);return {r1,semis:[s1,s2],confFinal:cf,champion:cf.winner};}
+function simulatePlayoffs(){
+ const e=STATE.standing.east,w=STATE.standing.west;
+ const ep=[e[0],e[1],e[2],e[3],e[4],e[5],STATE.playin.east.seed7Winner,STATE.playin.east.seed8Winner];
+ const wp=[w[0],w[1],w[2],w[3],w[4],w[5],STATE.playin.west.seed7Winner,STATE.playin.west.seed8Winner];
+ const east=conferencePlayoffs(ep),west=conferencePlayoffs(wp),finals=series(east.champion,west.champion);
+ const roster=STATE.teamRosters[finals.winner.name]||[];
+ const candidates=roster.filter(p=>!p.isUser).slice(0,4).map(p=>({name:p.name,pos:p.pos,pts:+rand(17,30).toFixed(1),reb:+rand(4,11).toFixed(1),ast:+rand(2,8).toFixed(1),stl:+rand(.6,2).toFixed(1),blk:+rand(.2,2.5).toFixed(1),ovr:p.ovr}));
+ if(finals.winner.name===STATE.userTeam)candidates.unshift({...userPlayer(),pts:Math.max(avg('pts')+rand(1,5),24),reb:avg('reb')+rand(0,2),ast:avg('ast')+rand(0,2),stl:avg('stl'),blk:avg('blk')});
+ const fmvp=candidates.sort((a,b)=>(b.pts+b.reb+b.ast)-(a.pts+a.reb+a.ast))[0]||{name:finals.winner.name,pos:'SF',pts:28,reb:7,ast:4,stl:1.2,blk:.6};
+ if(fmvp.name===STATE.playerName)STATE.careerStats.finalsMvps++;
+ if(finals.winner.name===STATE.userTeam)STATE.careerStats.rings++;
+ STATE.playoffs={east,west,finals,fmvp};STATE.step='playoffs';render();
+}
+function renderSeriesBlock(title,seriesList){return `<div class="mb-4"><h3 class="font-black text-sm mb-2">${title}</h3><div class="space-y-1.5">${seriesList.map((s,i)=>`<div class="p-2.5 bg-slate-50 border rounded-lg text-xs flex justify-between"><span>${i+1}. ${s.a.name} vs ${s.b.name}</span><b class="${s.winner.name===s.a.name?'text-orange-600':'text-blue-600'}">${s.winner.name}  ${s.score}</b></div>`).join('')}</div></div>`;}
+function renderPlayoffs(){
+ const p=STATE.playoffs;const f=p.fmvp;
+ return `<div><div class="text-center mb-4"><h2 class="text-xl font-black">👑 季后赛</h2></div><div class="grid md:grid-cols-2 gap-3"><div>${renderSeriesBlock('东部首轮',p.east.r1)}${renderSeriesBlock('东部半决赛',p.east.semis)}${renderSeriesBlock('东部决赛',[p.east.confFinal])}</div><div>${renderSeriesBlock('西部首轮',p.west.r1)}${renderSeriesBlock('西部半决赛',p.west.semis)}${renderSeriesBlock('西部决赛',[p.west.confFinal])}</div></div>
+ <div class="mt-4 p-4 rounded-xl bg-red-50 border border-red-200"><div class="text-xs text-red-600 font-bold">🏆 总决赛</div><div class="flex justify-between mt-1 text-sm font-black"><span>${p.finals.a.name}</span><span>${p.finals.score}</span><span>${p.finals.b.name}</span></div><div class="text-center mt-2 text-lg font-black text-orange-600">总冠军：${p.finals.winner.name}</div></div>
+ <div class="mt-4 p-4 rounded-xl bg-amber-50 border border-amber-200"><div class="font-black text-sm">🏅 FMVP：${f.name} (${f.pos})</div><div class="grid grid-cols-5 gap-1.5 mt-3">${[['得分',f.pts],['篮板',f.reb],['助攻',f.ast],['抢断',f.stl],['盖帽',f.blk]].map(x=>`<div class="stat-box"><div class="text-[10px] text-slate-500">${x[0]}</div><b>${Math.round(x[1])}</b></div>`).join('')}</div></div>
+ <button onclick="goDraft()" class="w-full mt-4 bg-indigo-600 text-white font-bold py-3 rounded-xl">🎓 选秀大会</button></div>`;
+}
+function getDraftClassForSeason(){
+  if(!Array.isArray(STATE.draftHistory)) STATE.draftHistory=[];
+  // 最近10次选秀已经使用过的届数，本轮全部排除；超过10年后最早的届数才重新可用。
+  const usedRecent=new Set(STATE.draftHistory.slice(-10));
+  let available=DRAFT_CLASSES.filter(x=>!usedRecent.has(x.year));
+  // 理论上不应触发；若候选池不足，优先解除最老记录，确保游戏永远可以继续。
+  if(!available.length){
+    const oldest=STATE.draftHistory.length?STATE.draftHistory[0]:null;
+    available=DRAFT_CLASSES.filter(x=>x.year!==oldest);
+    if(!available.length) available=[...DRAFT_CLASSES];
+  }
+  const cls=clone(pick(available));
+  STATE.draftHistory.push(cls.year);
+  if(STATE.draftHistory.length>50) STATE.draftHistory=STATE.draftHistory.slice(-50);
+  return cls;
+}
+function goDraft(){const cls=getDraftClassForSeason();STATE.draftResult={...cls,picks:[]};const order=[...ALL_TEAMS].sort((a,b)=>(STATE.teamStrengths[a]||78)-(STATE.teamStrengths[b]||78)).slice(0,10);STATE.draftResult.players.forEach((p,i)=>STATE.draftResult.picks.push({pick:i+1,player:p,team:order[i%order.length]}));STATE.step='draft';render();}
+function renderDraft(){
+ const d=STATE.draftResult;
+ return `<div><div class="text-center mb-3"><h2 class="text-xl font-black">🎓 ${STATE.seasonYear+1} 选秀大会</h2><div class="text-orange-600 text-sm font-bold mt-1">${d.name}</div><p class="text-[11px] text-slate-500 mt-1">选秀结束后，新秀会正式加入右侧显示的中签球队阵容</p></div><div class="space-y-1 max-h-[50vh] overflow-y-auto">${d.picks.map(x=>`<div class="flex justify-between items-center text-xs p-2.5 bg-slate-50 border rounded-lg"><span><b class="text-orange-600">第${x.pick}顺位</b> ${typeof x.player==='string'?x.player:x.player.name}</span><span class="font-bold text-slate-700">${x.team}</span></div>`).join('')}</div><button onclick="afterDraft()" class="w-full mt-4 bg-emerald-600 text-white font-bold py-3 rounded-xl">✅ 确认选秀结果，加入球队</button></div>`;
+}
+function afterDraft(){
+  // 选秀确认后：把每一名新秀真正加入本次选中的球队阵容，并从其他球队移除同名球员，避免历史球星重复占队。
+  const picks=Array.isArray(STATE.draftResult?.picks)?STATE.draftResult.picks:[];
+  const positions=['PG','SG','SF','PF','C'];
+  STATE.currentRookies=[];
+  STATE.nextRookies=[];
+
+  if(!STATE.teamRosters || Object.keys(STATE.teamRosters).length===0) buildRealRoster();
+  ALL_TEAMS.forEach(t=>{if(!Array.isArray(STATE.teamRosters[t])) STATE.teamRosters[t]=[];});
+
+  picks.forEach((x,i)=>{
+    const name=typeof x.player==='string'?x.player:(x.player?.name||'新秀'+(i+1));
+    const team=x.team;
+    // 历史球员如果恰好已经存在于当前模拟阵容，先移除旧记录，再以“新秀”身份加入中签球队。
+    ALL_TEAMS.forEach(t=>{
+      STATE.teamRosters[t]=STATE.teamRosters[t].filter(p=>!(p.name===name && !p.isUser));
+    });
+
+    const superstarRookie=isHistoricalSuperstar({name});
+    const rookieBaseOvr=superstarRookie ? rint(82,86) : rint(72,77);
+
+    const drafted={
+      id:'DRAFT-'+(STATE.draftResult?.year||STATE.seasonYear+1)+'-'+(i+1)+'-'+Date.now(),
+      name,
+      pos:(typeof x.player==='object'&&x.player.pos)||x.pos||positions[i%5],
+      // 历史超巨新秀：初始能力至少82；其他历史新秀：最高77。
+      ovr:rookieBaseOvr,
+      age:19,
+      role:i<3?'主要轮换':'替补',
+      salary:Math.round(clamp((Number(x.ovr)||78)*0.3+2,2,20)),
+      isUser:false,
+      isRookie:true,
+      draftYear:STATE.draftResult?.year||STATE.seasonYear+1,
+      draftPick:x.pick||i+1,
+      draftTeam:team
+    };
+
+    if(!Array.isArray(STATE.teamRosters[team])) STATE.teamRosters[team]=[];
+    // 每队最多15人；正常情况下这里都会有位置。
+    if(STATE.teamRosters[team].length>=15){
+      const cut=STATE.teamRosters[team].findIndex(p=>!p.isUser && !p.isRookie);
+      if(cut>=0) STATE.teamRosters[team].splice(cut,1);
+    }
+    STATE.teamRosters[team].push(drafted);
+    STATE.currentRookies.push({...drafted});
+  });
+
+  STATE.rookieDraftYear=STATE.draftResult?.year||STATE.seasonYear+1;
+  STATE.nextRookies=clone(STATE.currentRookies);
+  normalizeRosters();
+  rebuildTeamStrengths();
+  const joined=picks.map(x=>`${x.player} → ${x.team}`).join('；');
+  if(joined) addNews('选秀结果',`本届新秀已正式加入各自选中的球队：${joined}`,'选秀');
+  STATE.contractYearsLeft--;if(STATE.contractYearsLeft<=0){prepareFA();STATE.step='freeAgency'}else{prepareGrowth();STATE.step='allocation'}render();
+}
+function prepareFA(){STATE.freeAgencyOffers=shuffle(ALL_TEAMS).slice(0,4).map(team=>({team,years:rint(2,4),salary:Math.round(STATE.finalOVR*.55+rand(10,25)),interest:rint(80,99)}));if(!STATE.freeAgencyOffers.some(x=>x.team===STATE.userTeam))STATE.freeAgencyOffers[0]={team:STATE.userTeam,years:3,salary:Math.round(STATE.finalOVR*.6),interest:95};}
+function renderFreeAgency(){return `<div><div class="text-center mb-4"><h2 class="text-xl font-black">📝 自由市场</h2><p class="text-xs text-slate-500">合同到期，多队报价</p></div><div class="space-y-2">${STATE.freeAgencyOffers.map((o,i)=>`<div class="p-4 border ${o.team===STATE.userTeam?'border-orange-400 bg-orange-50':'border-slate-200 bg-slate-50'} rounded-xl flex justify-between items-center"><div><b>${o.team}</b><div class="text-xs text-slate-500 mt-1">${o.years}年 · 年薪${o.salary}M · 兴趣${o.interest}%</div></div><button onclick="signFA('${o.team}',${o.years})" class="bg-orange-600 text-white text-xs font-bold px-4 py-2 rounded-lg">签约</button></div>`).join('')}</div></div>`}
+function signFA(team,years){
+  // 自建球员转会：先从旧球队彻底移除，再加入新球队，避免旧名单残留。
+  if(!STATE.teamRosters) STATE.teamRosters={};
+  ALL_TEAMS.forEach(t=>{
+    if(Array.isArray(STATE.teamRosters[t])){
+      STATE.teamRosters[t]=STATE.teamRosters[t].filter(p=>!p.isUser && p.id!=='USER');
+    }
+  });
+  STATE.userTeam=team;
+  STATE.contractYearsLeft=years;
+  ensureUserOnRoster();
+  normalizeRosters();
+  rebuildTeamStrengths();
+  addNews('转会完成',`${STATE.playerName} 离开原球队，正式加盟 ${team}。`,'转会');
+  prepareGrowth();
+  STATE.step='allocation';
+  render();
+}
+function prepareGrowth(){STATE.remainingPoints=5;STATE.tempAllocated={};}
+function renderAllocation(){
+ return `<div><div class="text-center mb-4"><h2 class="text-xl font-black">⚡ 休赛期成长</h2><p class="text-xs text-slate-500">剩余：<b class="text-orange-600">${STATE.remainingPoints}</b> 点</p></div>
+ <div class="space-y-2">${ATTRS.map(k=>{const v=STATE.attrs[k]||50,a=STATE.tempAllocated[k]||0;return `<div class="flex justify-between items-center p-3 bg-slate-50 border rounded-xl"><div><b class="text-sm">${k}</b><div class="text-xs text-orange-600">当前 ${v}${a?` <span class="text-emerald-600">(+${a})</span>`:''}</div></div><div class="flex items-center gap-2"><button onclick="subPoint('${k}')" class="w-7 h-7 rounded-lg bg-slate-200">−</button><b>${v}</b><button onclick="addPoint('${k}')" class="w-7 h-7 rounded-lg bg-orange-600 text-white">+</button></div></div>`}).join('')}</div>
+ <button onclick="confirmGrowth()" class="w-full mt-4 bg-orange-600 text-white font-bold py-3 rounded-xl">✅ 确认成长</button></div>`;
+}
+function addPoint(k){if(STATE.remainingPoints>0&&STATE.attrs[k]<99){STATE.attrs[k]++;STATE.remainingPoints--;STATE.tempAllocated[k]=(STATE.tempAllocated[k]||0)+1;STATE.finalOVR=calcOVR(STATE.attrs);render()}}
+function subPoint(k){if((STATE.tempAllocated[k]||0)>0){STATE.attrs[k]--;STATE.remainingPoints++;STATE.tempAllocated[k]--;STATE.finalOVR=calcOVR(STATE.attrs);render()}}
+function confirmGrowth(){ensureUserOnRoster();rebuildTeamStrengths();STATE.step='offseason';render();}
+function renderOffseason(){return `<div class="text-center py-8"><h2 class="text-xl font-black">📈 休赛期</h2><p class="text-xs text-slate-500 mt-2">${STATE.age}岁 · OVR ${STATE.finalOVR} · 第${STATE.careerSeason}年</p><div class="grid grid-cols-3 gap-2 mt-5"><div class="stat-box"><div>冠军</div><b>${STATE.careerStats.rings}</b></div><div class="stat-box"><div>MVP</div><b>${STATE.careerStats.mvps}</b></div><div class="stat-box"><div>FMVP</div><b>${STATE.careerStats.finalsMvps}</b></div></div><button onclick="triggerPreseasonNews()" class="w-full mt-5 bg-orange-600 text-white font-bold py-3 rounded-xl">⏩ 新赛季前瞻</button><button onclick="retireCareer()" class="w-full mt-2 bg-slate-100 border font-semibold py-3 rounded-xl">🛑 退役</button></div>`}
+function triggerPreseasonNews(){
+ STATE.careerSeason++;STATE.seasonYear++;STATE.age++;
+ if(STATE.age>=39||STATE.careerSeason>20||STATE.finalOVR<55){retireCareer();return}
+ STATE.seasonStats={gp:0,pts:0,reb:0,ast:0,stl:0,blk:0};STATE.gamesPlayed=0;STATE.gameLog=[];STATE.userInjury={gamesOut:0,name:'',detail:'',ovrDrop:0};STATE.userInjuryEventsThisSeason=0;STATE.seasonEventGames=[];STATE.seasonEventsTriggered=0;prepareSeasonEventSchedule();
+ if(STATE.age>=32){STATE.agingDrops={};ATTRS.forEach(k=>{if(STATE.attrs[k]>45&&Math.random()<.7){const d=rint(1,2);STATE.attrs[k]=Math.max(40,STATE.attrs[k]-d);STATE.agingDrops[k]=d}});STATE.finalOVR=calcOVR(STATE.attrs);}
+ STATE.contractYearsLeft=Math.max(STATE.contractYearsLeft,1);
+ // AI球员先进行年龄成长/衰退和退役，再进行休赛期转会。
+ updateAIGrowthAndRetirement();
+ ensureUserOnRoster();rebuildTeamStrengths();runPreseasonMarketSimulation();
+ STATE.step='preseasonNews';render();
+}
+function renderPreseasonNews(){
+ const trades=STATE.tradeHistory||[];
+ return `<div><div class="text-center mb-4"><h2 class="text-xl font-black">📰 ${STATE.seasonYear}-${String(STATE.seasonYear+1).slice(2)} 休赛期动态</h2></div><div class="space-y-3 max-h-[50vh] overflow-y-auto">${trades.map((t,i)=>`<div class="news-card p-4 rounded-xl border border-orange-200 bg-orange-50/40"><div class="flex justify-between text-[10px] text-orange-600 font-bold"><span>🔥 签约</span><span>${STATE.seasonYear}夏</span></div><div class="font-black text-sm mt-1">${t.title}</div><div class="text-xs mt-2 text-slate-700">${t.desc}</div></div>`).join('')}</div><button onclick="STATE.step='dashboard';STATE.seasonPhase='regular';render();" class="w-full mt-4 bg-orange-600 text-white font-bold py-3.5 rounded-xl">🏀 开启新赛季</button></div>`;
+}
+
+function getHistoricalLegacy(){
+ const c=STATE.careerStats||{};
+ const gp=Number(c.gp||0), rings=Number(c.rings||0), mvps=Number(c.mvps||0), dpoys=Number(c.dpoys||0), fmvp=Number(c.finalsMvps||0), allNba=Number(c.allNba||0), allDef=Number(c.allDef||0), roys=Number(c.roys||0);
+ const ppg=gp?c.pts/gp:0, rpg=gp?c.reb/gp:0, apg=gp?c.ast/gp:0;
+ const longevity=Math.min(18, gp/260);
+ const production=Math.min(18, ppg*0.48+rpg*0.28+apg*0.34);
+ const accolades=mvps*7+fmvp*5+rings*4+dpoys*4+allNba*1.7+allDef*1.1+roys*0.8;
+ const score=longevity+production+accolades;
+ let tier, range, verdict, grade;
+ if(score>=78||mvps>=5||fmvp>=4||allNba>=14){tier='NBA历史前十级别';range='历史第5～10位区间';grade='传奇中的传奇';}
+ else if(score>=62||mvps>=3||fmvp>=3||allNba>=10){tier='NBA历史前20级别';range='历史第11～20位区间';grade='历史超巨';}
+ else if(score>=48||mvps>=2||allNba>=7){tier='NBA历史前35级别';range='历史第21～35位区间';grade='超级巨星';}
+ else if(score>=35||mvps>=1||allNba>=4||rings>=2){tier='NBA历史前60级别';range='历史第36～60位区间';grade='巨星';}
+ else if(score>=23||allNba>=2||rings>=1){tier='NBA历史前100级别';range='历史第61～100位区间';grade='明星球员/名人堂级';}
+ else {tier='NBA历史重要球员';range='历史100名以后';grade='优秀球员';}
+ const strengths=[];
+ if(mvps>=1) strengths.push(`${mvps}次MVP`);
+ if(fmvp>=1) strengths.push(`${fmvp}次FMVP`);
+ if(rings>=1) strengths.push(`${rings}枚总冠军`);
+ if(allNba>=1) strengths.push(`${allNba}次最佳阵容`);
+ if(allDef>=1) strengths.push(`${allDef}次防守阵容`);
+ if(gp>=700) strengths.push('超长职业生涯');
+ if(!strengths.length) strengths.push('稳定的长期职业表现');
+ let evalText;
+ if(score>=78||mvps>=5||allNba>=14){evalText='他不仅拥有顶级巅峰，还具备极强的长期统治力与荣誉积累。放在NBA历史坐标中，属于改变时代的超级传奇，历史地位主要由巅峰高度、冠军与个人荣誉共同支撑。';}
+ else if(score>=62||mvps>=3||allNba>=10){evalText='他的职业生涯已经明显超越普通巨星范畴，拥有足够的巅峰高度和荣誉厚度。历史评价通常会把他视为一个时代最具代表性的球员之一。';}
+ else if(score>=48||mvps>=2||allNba>=7){evalText='他的巅峰表现和累计荣誉都达到了超级巨星水平。虽然距离历史最顶层还存在一些差距，但已经属于NBA历史上非常有分量的球员。';}
+ else if(score>=35||mvps>=1||allNba>=4||rings>=2){evalText='他拥有足够出色的个人表现和荣誉履历，能够在NBA历史长河中留下清晰印记，属于名人堂级别的巨星。';}
+ else if(score>=23||allNba>=2||rings>=1){evalText='他是一名有代表性的高水平球员，拥有值得被历史记住的赛季与荣誉，但距离历史超巨层级仍有明显差距。';}
+ else {evalText='他的职业生涯具备一定影响力，但从历史荣誉、巅峰高度和长期积累来看，尚未进入历史最顶级球员行列。';}
+ return {tier,range,grade,score:score.toFixed(1),strengths:strengths.join('、'),evalText,ppg:ppg.toFixed(1),rpg:rpg.toFixed(1),apg:apg.toFixed(1)};
+}
+
+function retireCareer(){STATE.step='retired';render();}
+function renderRetired(){
+ const c=STATE.careerStats, h=getHistoricalLegacy();
+ return `<div class="text-center py-5"><h2 class="text-xl font-black">🏛️ 传奇落幕</h2><p class="text-xs text-slate-500 mt-2">${STATE.playerName} 在${STATE.age}岁退役，共${STATE.careerSeason}赛季。</p>
+ <div class="grid grid-cols-2 gap-2 mt-5 text-left p-4 bg-slate-50 border rounded-xl text-xs"><div>出场：<b>${c.gp}</b></div><div>得分：<b>${Math.round(c.pts)}</b></div><div>篮板：<b>${Math.round(c.reb)}</b></div><div>助攻：<b>${Math.round(c.ast)}</b></div><div>抢断：<b>${Math.round(c.stl)}</b></div><div>盖帽：<b>${Math.round(c.blk)}</b></div><div>总冠军：<b>${c.rings}</b></div><div>MVP：<b>${c.mvps}</b></div><div>FMVP：<b>${c.finalsMvps}</b></div><div>DPOY：<b>${c.dpoys}</b></div><div>最佳阵容：<b>${c.allNba||0}</b></div><div>防守阵容：<b>${c.allDef||0}</b></div></div>
+ <div class="mt-4 p-4 rounded-xl border border-orange-200 bg-orange-50 text-left"><div class="font-black text-base">👑 NBA历史地位评价</div><div class="mt-3 grid grid-cols-2 gap-2 text-xs"><div class="bg-white/70 rounded-lg p-2"><span class="text-slate-500">历史档位</span><br><b>${h.tier}</b></div><div class="bg-white/70 rounded-lg p-2"><span class="text-slate-500">历史排名区间</span><br><b>${h.range}</b></div><div class="bg-white/70 rounded-lg p-2"><span class="text-slate-500">生涯评价</span><br><b>${h.grade}</b></div><div class="bg-white/70 rounded-lg p-2"><span class="text-slate-500">生涯场均</span><br><b>${h.ppg}分 · ${h.rpg}板 · ${h.apg}助</b></div></div><div class="mt-3 text-xs leading-6 text-slate-700">${h.evalText}</div><div class="mt-2 text-[11px] text-orange-700">主要依据：${h.strengths}</div></div>
+ <p class="text-[10px] text-slate-400 mt-3">历史地位为游戏内基于生涯数据、巅峰表现、冠军与个人荣誉自动生成，并非现实NBA官方排名。</p>
+ <button onclick="resetGame()" class="w-full mt-5 bg-orange-600 text-white font-bold py-3 rounded-xl">🔄 新生涯</button></div>`;
+}
+
+/* =========================
+   初始化
+========================= */
+(function init(){
+  buildRealRoster();
+  STATE.step='create';
+  STATE.saveVersion=5.15;
+  if(!STATE.userInjury) STATE.userInjury={gamesOut:0,name:'',detail:'',ovrDrop:0};
+  STATE.eventHistory=[];
+  STATE.seasonEventGames=[];
+  STATE.seasonEventsTriggered=0;
+  STATE.userInjuryEventsThisSeason=0;
+  render();
+})();
+</script>
+</body>
+</html>
